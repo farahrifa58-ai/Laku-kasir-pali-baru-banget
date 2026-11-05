@@ -90,16 +90,17 @@ fun CheckoutScreen(
     val selectedPaymentMethod by viewModel.selectedPaymentMethod.collectAsState()
     val cashReceivedText by viewModel.cashReceivedInput.collectAsState()
 
-    // Highly reactive financial calculations
+    // Highly reactive financial calculations using FormatUtils.parseNumberFromDotted
     val cartSubtotal = remember(cart) { cart.sumOf { it.subtotal } }
-    val discountVal = remember(manualDiscount) { manualDiscount.toDoubleOrNull() ?: 0.0 }
-    val ppnVal = remember(isPpnAuto, ppnRate, manualPpnAmountText, cartSubtotal, discountVal) {
+    val discountVal = remember(manualDiscount) { FormatUtils.parseNumberFromDotted(manualDiscount) }
+    val manualPpnVal = remember(manualPpnAmountText) { FormatUtils.parseNumberFromDotted(manualPpnAmountText) }
+    val ppnVal = remember(isPpnAuto, ppnRate, manualPpnVal, cartSubtotal, discountVal) {
         when {
             isPpnAuto -> {
                 val afterDiscount = maxOf(0.0, cartSubtotal - discountVal)
                 afterDiscount * (ppnRate / 100.0)
             }
-            manualPpnAmountText.isNotBlank() -> manualPpnAmountText.toDoubleOrNull() ?: 0.0
+            manualPpnAmountText.isNotBlank() -> manualPpnVal
             else -> 0.0
         }
     }
@@ -108,7 +109,7 @@ fun CheckoutScreen(
     }
 
     val cashReceived = remember(cashReceivedText) {
-        cashReceivedText.toDoubleOrNull() ?: 0.0
+        FormatUtils.parseNumberFromDotted(cashReceivedText)
     }
 
     val changeAmount = remember(selectedPaymentMethod, cashReceived, totalPayable) {

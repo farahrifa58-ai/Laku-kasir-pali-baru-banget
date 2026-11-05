@@ -43,12 +43,12 @@ object ReceiptExportHelper {
         storeProfile: StoreProfile
     ): Bitmap {
         val width = 576
-        val margin = 36f
+        val margin = 32f
         // Calculate dynamic height based on number of items and text
-        val baseHeight = 750
-        val itemsHeight = transaction.items.size * 55
-        val notesLines = storeProfile.receiptNotes.split("\n").size * 25
-        val trialExtraHeight = if (!com.example.util.LicenseManager.isProActivated()) 70 else 0
+        val baseHeight = 840
+        val itemsHeight = transaction.items.size * 66
+        val notesLines = storeProfile.receiptNotes.split("\n").size * 32
+        val trialExtraHeight = if (!com.example.util.LicenseManager.isProActivated()) 90 else 0
         val height = baseHeight + itemsHeight + notesLines + trialExtraHeight
 
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
@@ -58,23 +58,23 @@ object ReceiptExportHelper {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.BLACK
-            textSize = 21f
+            textSize = 24f
             typeface = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
         }
         val boldPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.BLACK
-            textSize = 23f
+            textSize = 25f
             typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
         }
         val headerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.parseColor("#15803D") // Emerald green
-            textSize = 28f
+            textSize = 32f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
         }
         val subHeaderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.DKGRAY
-            textSize = 19f
+            textSize = 22f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
             textAlign = Paint.Align.CENTER
         }
@@ -83,13 +83,13 @@ object ReceiptExportHelper {
             strokeWidth = 2f
         }
 
-        var y = 35f
+        var y = 40f
 
         // Draw Store Logo if available with rounded corners and clean spacing
         val rawLogo = ImageUtils.loadBitmap(context, storeProfile.logoUri)
             ?: android.graphics.BitmapFactory.decodeResource(context.resources, com.example.R.drawable.logo_laku_kasir)
         if (rawLogo != null) {
-            val logoSize = 96
+            val logoSize = 104
             val scaledLogo = Bitmap.createScaledBitmap(rawLogo, logoSize, logoSize, true)
             val roundedLogo = getRoundedCornerBitmap(scaledLogo, 16f)
             val logoX = (width - logoSize) / 2f
@@ -106,24 +106,24 @@ object ReceiptExportHelper {
             )
 
             // Spacing to store name baseline
-            y += logoSize + 44f
+            y += logoSize + 48f
         } else {
-            y += 20f
+            y += 24f
         }
 
         // Top Store Header - Centered
         canvas.drawText(storeProfile.storeName.uppercase(), width / 2f, y, headerPaint)
-        y += 34f
+        y += 38f
         canvas.drawText("Pemilik: ${storeProfile.ownerName}", width / 2f, y, subHeaderPaint)
-        y += 28f
+        y += 30f
         canvas.drawText(storeProfile.address, width / 2f, y, subHeaderPaint)
-        y += 28f
+        y += 30f
         canvas.drawText("WA: ${storeProfile.phone}", width / 2f, y, subHeaderPaint)
-        y += 36f
+        y += 38f
 
         // Divider
         canvas.drawLine(margin, y, width - margin, y, linePaint)
-        y += 30f
+        y += 34f
 
         // Metadata rows
         fun drawRow(label: String, value: String, isBold: Boolean = false) {
@@ -131,7 +131,7 @@ object ReceiptExportHelper {
             canvas.drawText(label, margin, y, textPaint)
             val valWidth = p.measureText(value)
             canvas.drawText(value, width - margin - valWidth, y, p)
-            y += 32f
+            y += 36f
         }
 
         drawRow("No. Struk", transaction.transactionCode, true)
@@ -145,27 +145,27 @@ object ReceiptExportHelper {
 
         y += 10f
         canvas.drawLine(margin, y, width - margin, y, linePaint)
-        y += 30f
+        y += 34f
 
         // Items
-        boldPaint.textSize = 22f
+        boldPaint.textSize = 25f
         canvas.drawText("RINCIAN BARANG", margin, y, boldPaint)
-        y += 30f
+        y += 34f
 
         transaction.items.forEach { item ->
             canvas.drawText(item.productName, margin, y, boldPaint)
-            y += 26f
+            y += 28f
             val qtyPrice = "${FormatUtils.formatQty(item.quantity, item.unit)} x ${FormatUtils.formatRupiah(item.sellingPrice)}"
             val subtotal = FormatUtils.formatRupiah(item.subtotal)
             canvas.drawText(qtyPrice, margin, y, textPaint)
             val subWidth = textPaint.measureText(subtotal)
             canvas.drawText(subtotal, width - margin - subWidth, y, textPaint)
-            y += 30f
+            y += 34f
         }
 
-        y += 5f
+        y += 8f
         canvas.drawLine(margin, y, width - margin, y, linePaint)
-        y += 30f
+        y += 34f
 
         // Financials
         drawRow("Subtotal", FormatUtils.formatRupiah(transaction.subtotal))
@@ -176,24 +176,24 @@ object ReceiptExportHelper {
             drawRow(if (transaction.ppnRate > 0) "PPN (${transaction.ppnRate.toInt()}%)" else "PPN", "+ ${FormatUtils.formatRupiah(transaction.ppnAmount)}")
         }
 
-        y += 5f
+        y += 8f
         linePaint.strokeWidth = 3f
         linePaint.color = Color.parseColor("#16A34A")
         canvas.drawLine(margin, y, width - margin, y, linePaint)
         linePaint.color = Color.LTGRAY
         linePaint.strokeWidth = 2f
-        y += 35f
+        y += 38f
 
         val totalPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.parseColor("#15803D")
-            textSize = 28f
+            textSize = 32f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         }
         canvas.drawText("TOTAL", margin, y, totalPaint)
         val totVal = FormatUtils.formatRupiah(transaction.total)
         val totWidth = totalPaint.measureText(totVal)
         canvas.drawText(totVal, width - margin - totWidth, y, totalPaint)
-        y += 38f
+        y += 42f
 
         drawRow("Metode Bayar", transaction.paymentMethod)
         if (transaction.paymentMethod == "Tunai") {
@@ -202,26 +202,26 @@ object ReceiptExportHelper {
         }
         drawRow("Status", if (transaction.isPaid) "LUNAS" else "KASBON / BELUM LUNAS", true)
 
-        y += 10f
+        y += 12f
         canvas.drawLine(margin, y, width - margin, y, linePaint)
-        y += 35f
+        y += 38f
 
         // Thank you note
         val centerNotePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.DKGRAY
-            textSize = 20f
+            textSize = 22f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
             textAlign = Paint.Align.CENTER
         }
         storeProfile.receiptNotes.split("\n").forEach { line ->
             canvas.drawText(line, width / 2f, y, centerNotePaint)
-            y += 28f
+            y += 30f
         }
 
-        y += 15f
+        y += 18f
         val footerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.GRAY
-            textSize = 16f
+            textSize = 18f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.ITALIC)
             textAlign = Paint.Align.CENTER
         }
@@ -229,22 +229,22 @@ object ReceiptExportHelper {
 
         // Watermark Mode Trial / Demo (Hilang otomatis saat versi PRO aktif)
         if (!com.example.util.LicenseManager.isProActivated()) {
-            y += 24f
+            y += 28f
             val trialWatermarkPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.parseColor("#E65100")
-                textSize = 17f
+                textSize = 19f
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                 textAlign = Paint.Align.CENTER
             }
             canvas.drawText("*** MODE UJI COBA / TRIAL VERSION ***", width / 2f, y, trialWatermarkPaint)
-            y += 20f
+            y += 24f
             val trialSubPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.parseColor("#C62828")
-                textSize = 13f
+                textSize = 15f
                 typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
                 textAlign = Paint.Align.CENTER
             }
-            canvas.drawText("Hubungi Penjual untuk Aktivasi Lisensi PRO Resmi", width / 2f, y, trialSubPaint)
+            canvas.drawText("Batas 3 Transaksi & 3 Produk (Hubungi Penjual untuk Lisensi PRO)", width / 2f, y, trialSubPaint)
         }
 
         return bitmap
@@ -589,18 +589,28 @@ object ReceiptExportHelper {
                             val pageWidth = printedDoc.pageWidth.toFloat()
                             val pageHeight = printedDoc.pageHeight.toFloat()
 
-                            // Fit receipt width to paper roll width (up to 95% on thermal roll, or centered on large sheet)
-                            val targetWidth = if (pageWidth <= 320f) {
-                                pageWidth * 0.95f
-                            } else {
-                                360f.coerceAtMost(pageWidth * 0.85f)
+                            // Fit receipt width to paper roll width (larger, clear and legible, not edge-to-edge)
+                            val targetWidth = when {
+                                pageWidth <= 320f -> {
+                                    // Thermal paper roll (58mm - 80mm): 90% of paper width (leaves safe margin without cutting edges)
+                                    pageWidth * 0.90f
+                                }
+                                pageWidth <= 450f -> {
+                                    // A5 or small slip: 82% of paper width
+                                    pageWidth * 0.82f
+                                }
+                                else -> {
+                                    // Standard A4 / Letter paper: ~80% of paper width (~475pt - 490pt)
+                                    // Dibuat agak besar dan mudah dibaca, tapi jangan terlalu full sesuai kertas (ada margin nyaman ~10% kiri & kanan)
+                                    pageWidth * 0.80f
+                                }
                             }
                             val scale = targetWidth / bitmap.width.toFloat()
                             val scaledWidth = bitmap.width * scale
 
                             // Horizontally center receipt perfectly on the printer paper
                             val offsetX = (pageWidth - scaledWidth) / 2f
-                            val offsetY = 12f
+                            val offsetY = 20f
 
                             canvas.save()
                             canvas.translate(offsetX, offsetY)

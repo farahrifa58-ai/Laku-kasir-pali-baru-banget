@@ -38,8 +38,9 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material.icons.filled.QrCodeScanner
+import com.example.ui.components.BarcodeScannerDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -134,6 +135,7 @@ fun AddEditProductScreen(
     var unitDropdownExpanded by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showCurrencyDialog by remember { mutableStateOf(false) }
+    var showBarcodeScanner by remember { mutableStateOf(false) }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -143,6 +145,33 @@ fun AddEditProductScreen(
             if (permanentPath != null) {
                 imageUri = permanentPath
             }
+        }
+    }
+
+    val onPerformSave = {
+        if (name.isBlank()) {
+            errorMessage = "Nama produk wajib diisi!"
+        } else {
+            val sellingPrice = FormatUtils.parseNumberFromDotted(sellingPriceText)
+            val costPrice = FormatUtils.parseNumberFromDotted(costPriceText)
+            val stock = stockText.toDoubleOrNull() ?: 0.0
+            val minAlert = minStockAlertText.toDoubleOrNull() ?: 5.0
+
+            onSave(
+                productToEdit?.id ?: 0L,
+                name,
+                category,
+                unit,
+                barcode,
+                costPrice,
+                sellingPrice,
+                stock,
+                isUnlimitedStock,
+                minAlert,
+                supplierName,
+                supplierPhone,
+                imageUri
+            )
         }
     }
 
@@ -158,6 +187,31 @@ fun AddEditProductScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.testTag("add_product_back_button")) {
                         Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                    }
+                },
+                actions = {
+                    Button(
+                        onClick = onPerformSave,
+                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        modifier = Modifier
+                            .padding(end = 8.dp)
+                            .testTag("save_product_top_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Simpan",
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            fontSize = 14.sp
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -332,26 +386,61 @@ fun AddEditProductScreen(
                 }
             }
 
-            // Kode / Barcode
-            OutlinedTextField(
-                value = barcode,
-                onValueChange = { barcode = it },
-                label = { Text(LakuStrings.get("barcode", lang)) },
-                placeholder = { Text("Contoh: 899123456789 atau KODE-01") },
-                trailingIcon = {
-                    IconButton(onClick = {
+            // Kode / Barcode Produk dengan Tombol Scan Kamera & Buat Otomatis
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = barcode,
+                    onValueChange = { barcode = it },
+                    label = { Text(LakuStrings.get("barcode", lang)) },
+                    placeholder = { Text("899123456789 / KODE-01") },
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("barcode_input"),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                // Tombol Scan Barcode Pakai Kamera
+                Surface(
+                    onClick = { showBarcodeScanner = true },
+                    shape = RoundedCornerShape(12.dp),
+                    color = EmeraldGreenPrimary,
+                    modifier = Modifier
+                        .size(54.dp)
+                        .testTag("add_product_scan_barcode_button")
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.QrCodeScanner,
+                            contentDescription = "Scan Barcode Kamera",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+
+                // Tombol Buat Barcode Otomatis
+                IconButton(
+                    onClick = {
                         val randomCode = "BRC-" + (100000..999999).random().toString()
                         barcode = randomCode
-                    }) {
-                        Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = "Buat Barcode Otomatis", tint = EmeraldGreenPrimary)
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("barcode_input"),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
-            )
+                    },
+                    modifier = Modifier
+                        .size(54.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = "Buat Barcode Otomatis",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
 
             // Pilihan Mata Uang untuk Harga Modal / HPP & Harga Jual
             val activeCurrency = remember(FormatUtils.currentCurrencyCode) {
@@ -676,32 +765,7 @@ fun AddEditProductScreen(
 
             // Simpan Button
             Button(
-                onClick = {
-                    if (name.isBlank()) {
-                        errorMessage = "Nama produk wajib diisi!"
-                        return@Button
-                    }
-                    val sellingPrice = FormatUtils.parseNumberFromDotted(sellingPriceText)
-                    val costPrice = FormatUtils.parseNumberFromDotted(costPriceText)
-                    val stock = stockText.toDoubleOrNull() ?: 0.0
-                    val minAlert = minStockAlertText.toDoubleOrNull() ?: 5.0
-
-                    onSave(
-                        productToEdit?.id ?: 0L,
-                        name,
-                        category,
-                        unit,
-                        barcode,
-                        costPrice,
-                        sellingPrice,
-                        stock,
-                        isUnlimitedStock,
-                        minAlert,
-                        supplierName,
-                        supplierPhone,
-                        imageUri
-                    )
-                },
+                onClick = onPerformSave,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
@@ -733,6 +797,17 @@ fun AddEditProductScreen(
                 Toast.makeText(context, "Mata uang diubah ke ${curr.name} (${curr.symbol})", Toast.LENGTH_SHORT).show()
             },
             onDismiss = { showCurrencyDialog = false }
+        )
+    }
+
+    if (showBarcodeScanner) {
+        BarcodeScannerDialog(
+            onDismiss = { showBarcodeScanner = false },
+            onBarcodeScanned = { scannedCode ->
+                barcode = scannedCode.trim()
+                showBarcodeScanner = false
+                Toast.makeText(context, "Barcode discan: $scannedCode", Toast.LENGTH_SHORT).show()
+            }
         )
     }
 }

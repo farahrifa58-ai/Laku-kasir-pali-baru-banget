@@ -24,6 +24,7 @@ import com.example.ui.screens.ProductListScreen
 import com.example.ui.screens.ReceiptScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.SplashScreen
+import com.example.ui.components.LicenseActivationDialog
 import com.example.ui.theme.LakuKasirTheme
 
 class MainActivity : ComponentActivity() {
@@ -36,6 +37,8 @@ class MainActivity : ComponentActivity() {
             val currentScreen by viewModel.currentScreen.collectAsState()
             val productToEdit by viewModel.productToEdit.collectAsState()
             val activeReceipt by viewModel.activeReceiptTransaction.collectAsState()
+            val showActivationDialog by viewModel.showActivationDialog.collectAsState()
+            val trialLimitDialogMessage by viewModel.trialLimitDialogMessage.collectAsState()
 
             LakuKasirTheme(themeSetting = if (currentScreen == Screen.SPLASH) "light" else storeProfile.themeMode) {
                 Surface(
@@ -175,6 +178,21 @@ class MainActivity : ComponentActivity() {
                                 viewModel.navigateTo(Screen.POS)
                             }
                         }
+                    }
+
+                    if (showActivationDialog) {
+                        LicenseActivationDialog(
+                            onDismiss = {
+                                viewModel.closeActivationDialog()
+                                viewModel.clearTrialLimitDialog()
+                            },
+                            onActivated = {
+                                viewModel.closeActivationDialog()
+                                viewModel.clearTrialLimitDialog()
+                            },
+                            sellerPhone = storeProfile.phone.ifBlank { com.example.util.LicenseManager.SELLER_WHATSAPP },
+                            customMessage = trialLimitDialogMessage
+                        )
                     }
                 }
             }

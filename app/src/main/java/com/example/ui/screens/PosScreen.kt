@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -37,6 +38,7 @@ import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Percent
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
@@ -97,6 +99,7 @@ import com.example.ui.LakuKasirViewModel
 import com.example.ui.Screen
 import com.example.ui.components.AppBottomBar
 import com.example.ui.components.AppTopBar
+import com.example.ui.components.BarcodeScannerDialog
 import com.example.ui.theme.DangerRed
 import com.example.ui.theme.EmeraldGreenDark
 import com.example.ui.theme.EmeraldGreenPrimary
@@ -129,6 +132,7 @@ fun PosScreen(
 
     var showCartSheet by remember { mutableStateOf(false) }
     var productForKgDialog by remember { mutableStateOf<Product?>(null) }
+    var showBarcodeScanner by remember { mutableStateOf(false) }
 
     val categoriesList = listOf("Semua") + Categories.ALL_CATEGORIES
 
@@ -161,28 +165,52 @@ fun PosScreen(
                     .padding(horizontal = 14.dp, vertical = 8.dp)
             ) {
 
-
-                // Search Bar
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { viewModel.posSearchQuery.value = it },
-                    placeholder = { Text(LakuStrings.get("search_product_barcode", lang), fontSize = 14.sp) },
-                    leadingIcon = {
-                        Icon(imageVector = Icons.Default.Search, contentDescription = "Cari", tint = MaterialTheme.colorScheme.primary)
-                    },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { viewModel.posSearchQuery.value = "" }) {
-                                Icon(imageVector = Icons.Default.Clear, contentDescription = "Hapus")
+                // Search Bar with Barcode Scanner Button
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { viewModel.posSearchQuery.value = it },
+                        placeholder = { Text(LakuStrings.get("search_product_barcode", lang), fontSize = 14.sp) },
+                        leadingIcon = {
+                            Icon(imageVector = Icons.Default.Search, contentDescription = "Cari", tint = MaterialTheme.colorScheme.primary)
+                        },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { viewModel.posSearchQuery.value = "" }) {
+                                    Icon(imageVector = Icons.Default.Clear, contentDescription = "Hapus")
+                                }
                             }
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("pos_search_input")
+                    )
+
+                    // Button Scan Barcode Kamera
+                    Surface(
+                        onClick = { showBarcodeScanner = true },
+                        shape = RoundedCornerShape(14.dp),
+                        color = EmeraldGreenPrimary,
+                        modifier = Modifier
+                            .size(54.dp)
+                            .testTag("pos_scan_barcode_button")
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.QrCodeScanner,
+                                contentDescription = "Scan Barcode Kamera",
+                                tint = Color.White,
+                                modifier = Modifier.size(26.dp)
+                            )
                         }
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("pos_search_input")
-                )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
@@ -436,10 +464,33 @@ fun PosScreen(
                 onClose = { showCartSheet = false },
                 onCheckout = {
                     showCartSheet = false
-                    onOpenCheckout()
+                    if (!isProLicense && allTransactions.size >= com.example.util.LicenseManager.MAX_TRIAL_TRANSACTIONS) {
+                        viewModel.trialLimitDialogMessage.value = "Batas Uji Coba Tercapai!\nVersi Trial dibatasi maksimal ${com.example.util.LicenseManager.MAX_TRIAL_TRANSACTIONS} kali transaksi. Silakan aktivasi lisensi PRO untuk melanjutkan transaksi tanpa batas."
+                        viewModel.openActivationDialog()
+                    } else {
+                        onOpenCheckout()
+                    }
                 }
             )
         }
+    }
+
+    if (showBarcodeScanner) {
+        BarcodeScannerDialog(
+            onDismiss = { showBarcodeScanner = false },
+            onBarcodeScanned = { scannedCode ->
+                showBarcodeScanner = false
+                val allProductsList = allProductsCount
+                val matched = allProductsList.find { it.barcode.equals(scannedCode.trim(), ignoreCase = true) }
+                if (matched != null) {
+                    viewModel.addToCart(matched, 1.0)
+                    Toast.makeText(context, "Ditambahkan: ${matched.name}", Toast.LENGTH_SHORT).show()
+                } else {
+                    viewModel.posSearchQuery.value = scannedCode.trim()
+                    Toast.makeText(context, "Barcode: $scannedCode (Tidak ada di katalog)", Toast.LENGTH_LONG).show()
+                }
+            }
+        )
     }
 }
 
@@ -895,31 +946,30 @@ fun CartSheetContent(
                     shape = RoundedCornerShape(10.dp)
                 )
 
-                // Nama Pelanggan & Nomor WhatsApp
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = customerName,
-                        onValueChange = { viewModel.customerName.value = it },
-                        label = { Text(LakuStrings.get("customer_name", lang)) },
-                        leadingIcon = { Icon(imageVector = Icons.Default.Person, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                        placeholder = { Text(LakuStrings.get("optional", lang)) },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        shape = RoundedCornerShape(10.dp)
-                    )
+                // Nama Pelanggan (Opsional)
+                OutlinedTextField(
+                    value = customerName,
+                    onValueChange = { viewModel.customerName.value = it },
+                    label = { Text("Nama Pelanggan (Opsional)") },
+                    leadingIcon = { Icon(imageVector = Icons.Default.Person, contentDescription = null, modifier = Modifier.size(18.dp), tint = EmeraldGreenPrimary) },
+                    placeholder = { Text("Contoh: Budi Santoso") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp)
+                )
 
-                    OutlinedTextField(
-                        value = customerPhone,
-                        onValueChange = { viewModel.customerPhone.value = it },
-                        label = { Text(LakuStrings.get("customer_phone", lang)) },
-                        leadingIcon = { Icon(imageVector = Icons.Default.Phone, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                        placeholder = { Text("08...") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        shape = RoundedCornerShape(10.dp)
-                    )
-                }
+                // Nomor WhatsApp Pelanggan (Opsional)
+                OutlinedTextField(
+                    value = customerPhone,
+                    onValueChange = { viewModel.customerPhone.value = it },
+                    label = { Text("No. WhatsApp (Opsional)") },
+                    leadingIcon = { Icon(imageVector = Icons.Default.Phone, contentDescription = null, modifier = Modifier.size(18.dp), tint = EmeraldGreenPrimary) },
+                    placeholder = { Text("Contoh: 08123456789") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp)
+                )
             }
         }
 

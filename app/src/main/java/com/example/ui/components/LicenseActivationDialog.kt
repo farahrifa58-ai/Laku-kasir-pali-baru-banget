@@ -52,7 +52,8 @@ import com.example.util.LicenseManager
 fun LicenseActivationDialog(
     onDismiss: () -> Unit,
     onActivated: () -> Unit,
-    sellerPhone: String = LicenseManager.SELLER_WHATSAPP
+    sellerPhone: String = LicenseManager.SELLER_WHATSAPP,
+    customMessage: String? = null
 ) {
     val context = LocalContext.current
     var inputKey by remember { mutableStateOf("") }
@@ -117,11 +118,38 @@ fun LicenseActivationDialog(
                         }
                     }
                 } else {
-                    Text(
-                        text = "Aplikasi saat ini berjalan dalam Mode Trial (Uji Coba). Masukkan kode lisensi yang diberikan oleh penjual untuk membuka fitur penuh.",
-                        fontSize = 13.sp,
-                        color = Color.DarkGray
-                    )
+                    if (customMessage != null) {
+                        Surface(
+                            color = Color(0xFFFFF3E0),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, Color(0xFFFFB74D))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Lock,
+                                    contentDescription = null,
+                                    tint = Color(0xFFE65100),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = customMessage,
+                                    fontSize = 12.sp,
+                                    color = Color(0xFFE65100),
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    } else {
+                        Text(
+                            text = "Aplikasi saat ini berjalan dalam Mode Trial (Uji Coba). Masukkan kode lisensi yang diberikan oleh penjual untuk membuka fitur penuh.",
+                            fontSize = 13.sp,
+                            color = Color.DarkGray
+                        )
+                    }
 
                     Surface(
                         color = Color(0xFFFFF8E1),

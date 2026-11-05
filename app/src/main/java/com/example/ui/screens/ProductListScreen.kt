@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Inventory
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
@@ -77,6 +78,7 @@ import com.example.ui.LakuKasirViewModel
 import com.example.ui.Screen
 import com.example.ui.components.AppBottomBar
 import com.example.ui.components.AppTopBar
+import com.example.ui.components.BarcodeScannerDialog
 import com.example.ui.components.CurrencySelectionDialog
 import com.example.ui.theme.DangerRed
 import com.example.ui.theme.EmeraldGreenDark
@@ -102,6 +104,7 @@ fun ProductListScreen(
     var selectedCategory by remember { mutableStateOf("Semua") }
     var showOnlyLowStock by remember { mutableStateOf(false) }
     var showCurrencyDialog by remember { mutableStateOf(false) }
+    var showBarcodeScanner by remember { mutableStateOf(false) }
 
     var productToDelete by remember { mutableStateOf<Product?>(null) }
 
@@ -137,8 +140,13 @@ fun ProductListScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    viewModel.productToEdit.value = null
-                    onNavigate(Screen.ADD_EDIT_PRODUCT)
+                    if (!isProLicense && products.size >= com.example.util.LicenseManager.MAX_TRIAL_PRODUCTS) {
+                        viewModel.trialLimitDialogMessage.value = "Batas Produk Uji Coba Tercapai!\nVersi Trial dibatasi maksimal ${com.example.util.LicenseManager.MAX_TRIAL_PRODUCTS} produk. Silakan aktivasi lisensi PRO untuk menambahkan produk tanpa batas."
+                        viewModel.openActivationDialog()
+                    } else {
+                        viewModel.productToEdit.value = null
+                        onNavigate(Screen.ADD_EDIT_PRODUCT)
+                    }
                 },
                 containerColor = EmeraldGreenPrimary,
                 contentColor = Color.White,
@@ -194,25 +202,48 @@ fun ProductListScreen(
                 )
             }
 
-            // Search Bar
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = { Text(LakuStrings.get("search_product_placeholder", lang), fontSize = 14.sp) },
-                leadingIcon = {
-                    Icon(imageVector = Icons.Default.Search, contentDescription = "Cari", tint = MaterialTheme.colorScheme.primary)
-                },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }) {
-                            Icon(imageVector = Icons.Default.Clear, contentDescription = "Hapus")
+            // Search Bar with Barcode Scanner
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text(LakuStrings.get("search_product_placeholder", lang), fontSize = 14.sp) },
+                    leadingIcon = {
+                        Icon(imageVector = Icons.Default.Search, contentDescription = "Cari", tint = MaterialTheme.colorScheme.primary)
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(imageVector = Icons.Default.Clear, contentDescription = "Hapus")
+                            }
                         }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.weight(1f)
+                )
+
+                // Button Scan Barcode Kamera
+                Surface(
+                    onClick = { showBarcodeScanner = true },
+                    shape = RoundedCornerShape(14.dp),
+                    color = EmeraldGreenPrimary,
+                    modifier = Modifier.size(54.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.QrCodeScanner,
+                            contentDescription = "Scan Barcode Produk",
+                            tint = Color.White,
+                            modifier = Modifier.size(26.dp)
+                        )
                     }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth()
-            )
+                }
+            }
 
             Spacer(modifier = Modifier.height(10.dp))
 
@@ -556,6 +587,17 @@ fun ProductListScreen(
                 android.widget.Toast.makeText(context, "Mata uang diubah ke ${curr.name} (${curr.symbol})", android.widget.Toast.LENGTH_SHORT).show()
             },
             onDismiss = { showCurrencyDialog = false }
+        )
+    }
+
+    if (showBarcodeScanner) {
+        BarcodeScannerDialog(
+            onDismiss = { showBarcodeScanner = false },
+            onBarcodeScanned = { scannedCode ->
+                showBarcodeScanner = false
+                searchQuery = scannedCode.trim()
+                android.widget.Toast.makeText(context, "Mencari barcode: $scannedCode", android.widget.Toast.LENGTH_SHORT).show()
+            }
         )
     }
 }

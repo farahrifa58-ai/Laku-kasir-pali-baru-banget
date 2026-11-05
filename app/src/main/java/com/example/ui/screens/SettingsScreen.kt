@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.Stars
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Send
@@ -137,6 +138,7 @@ fun SettingsScreen(
     val products by viewModel.allProducts.collectAsState()
     val transactions by viewModel.allTransactions.collectAsState()
     val expenses by viewModel.allExpenses.collectAsState()
+    val isProLicense by viewModel.isProLicense.collectAsState()
 
     val restoreFileLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -168,6 +170,23 @@ fun SettingsScreen(
         }
     }
 
+    val onSaveSettings = {
+        val updated = currentProfile.copy(
+            storeName = storeName.trim(),
+            ownerName = ownerName.trim(),
+            address = address.trim(),
+            phone = phone.trim(),
+            receiptNotes = receiptNotes.trim(),
+            logoUri = logoUri,
+            themeMode = selectedTheme,
+            language = selectedLanguage,
+            currencyCode = selectedCurrencyCode
+        )
+        viewModel.updateStoreProfile(updated)
+        saveSuccessMessage = true
+        Toast.makeText(context, LakuStrings.get("settings_saved", selectedLanguage), Toast.LENGTH_SHORT).show()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -175,6 +194,31 @@ fun SettingsScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.testTag("settings_back_button")) {
                         Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                    }
+                },
+                actions = {
+                    Button(
+                        onClick = onSaveSettings,
+                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        modifier = Modifier
+                            .padding(end = 8.dp)
+                            .testTag("settings_top_save_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Simpan",
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            fontSize = 14.sp
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -700,22 +744,7 @@ fun SettingsScreen(
 
             // Tombol Simpan Pengaturan
             Button(
-                onClick = {
-                    val updated = currentProfile.copy(
-                        storeName = storeName.trim(),
-                        ownerName = ownerName.trim(),
-                        address = address.trim(),
-                        phone = phone.trim(),
-                        receiptNotes = receiptNotes.trim(),
-                        logoUri = logoUri,
-                        themeMode = selectedTheme,
-                        language = selectedLanguage,
-                        currencyCode = selectedCurrencyCode
-                    )
-                    viewModel.updateStoreProfile(updated)
-                    saveSuccessMessage = true
-                    Toast.makeText(context, LakuStrings.get("settings_saved", selectedLanguage), Toast.LENGTH_SHORT).show()
-                },
+                onClick = onSaveSettings,
                 colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary),
                 shape = RoundedCornerShape(14.dp),
                 modifier = Modifier
@@ -901,38 +930,87 @@ fun SettingsScreen(
                         }
                     }
 
-                    // Lisensi Full Version Resmi
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color(0xFFE8F5E9),
-                        border = BorderStroke(1.5.dp, EmeraldGreenPrimary),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    // Lisensi Status (PRO vs Trial)
+                    if (isProLicense) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFFE8F5E9),
+                            border = BorderStroke(1.5.dp, EmeraldGreenPrimary),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Verified,
-                                contentDescription = null,
-                                tint = EmeraldGreenDark,
-                                modifier = Modifier.size(26.dp)
-                            )
-                            Column {
-                                Text(
-                                    text = LakuStrings.get("full_version_title", selectedLanguage),
-                                    fontWeight = FontWeight.ExtraBold,
-                                    fontSize = 13.sp,
-                                    color = EmeraldGreenDark
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Verified,
+                                    contentDescription = null,
+                                    tint = EmeraldGreenDark,
+                                    modifier = Modifier.size(26.dp)
                                 )
-                                Text(
-                                    text = LakuStrings.get("full_version_desc", selectedLanguage),
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Column {
+                                    Text(
+                                        text = LakuStrings.get("full_version_title", selectedLanguage),
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 13.sp,
+                                        color = EmeraldGreenDark
+                                    )
+                                    Text(
+                                        text = LakuStrings.get("full_version_desc", selectedLanguage),
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFFFFF3E0),
+                            border = BorderStroke(1.5.dp, Color(0xFFFFB74D)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Stars,
+                                        contentDescription = null,
+                                        tint = Color(0xFFE65100),
+                                        modifier = Modifier.size(26.dp)
+                                    )
+                                    Column {
+                                        Text(
+                                            text = "Mode Uji Coba (Trial Version)",
+                                            fontWeight = FontWeight.ExtraBold,
+                                            fontSize = 13.sp,
+                                            color = Color(0xFFE65100)
+                                        )
+                                        Text(
+                                            text = "Batas: Maksimal 3 Transaksi & 3 Produk",
+                                            fontSize = 11.sp,
+                                            color = Color(0xFFBF360C)
+                                        )
+                                    }
+                                }
+                                Button(
+                                    onClick = { viewModel.openActivationDialog() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE65100)),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Aktivasi Lisensi PRO Resmi", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                }
                             }
                         }
                     }

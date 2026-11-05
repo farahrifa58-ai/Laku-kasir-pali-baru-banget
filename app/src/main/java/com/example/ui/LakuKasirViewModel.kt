@@ -241,8 +241,15 @@ class LakuKasirViewModel(application: Application) : AndroidViewModel(applicatio
     fun processCheckout(onSuccess: (Transaction) -> Unit) {
         val items = _cart.value
         if (items.isEmpty()) return
-
-
+        // Periksa batas transaksi untuk versi Trial
+        if (!com.example.util.LicenseManager.isProActivated()) {
+            val currentTxCount = allTransactions.value.size
+            if (currentTxCount >= com.example.util.LicenseManager.MAX_TRIAL_TRANSACTIONS) {
+                trialLimitDialogMessage.value = "Batas Uji Coba Tercapai!\nVersi Trial dibatasi maksimal ${com.example.util.LicenseManager.MAX_TRIAL_TRANSACTIONS} kali transaksi. Silakan aktivasi lisensi PRO untuk melanjutkan transaksi kasir tanpa batas."
+                showActivationDialog.value = true
+                return
+            }
+        }
 
         val now = System.currentTimeMillis()
         val codePrefix = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date(now))
@@ -332,8 +339,15 @@ class LakuKasirViewModel(application: Application) : AndroidViewModel(applicatio
         supplierName: String,
         supplierPhone: String,
         imageUri: String?
-    ) {
-
+    ) {        // Periksa batas penambahan produk untuk versi Trial (hanya saat tambah produk baru id == 0L)
+        if (id == 0L && !com.example.util.LicenseManager.isProActivated()) {
+            val currentProductCount = allProducts.value.size
+            if (currentProductCount >= com.example.util.LicenseManager.MAX_TRIAL_PRODUCTS) {
+                trialLimitDialogMessage.value = "Batas Produk Uji Coba Tercapai!\nVersi Trial dibatasi maksimal ${com.example.util.LicenseManager.MAX_TRIAL_PRODUCTS} produk. Silakan aktivasi lisensi PRO untuk menambahkan produk tanpa batas."
+                showActivationDialog.value = true
+                return
+            }
+        }
 
         viewModelScope.launch {
             val product = Product(
