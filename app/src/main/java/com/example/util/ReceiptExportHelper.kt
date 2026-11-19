@@ -35,46 +35,47 @@ object ReceiptExportHelper {
     }
 
     /**
-     * Renders a realistic receipt image into a Bitmap
+     * Renders a realistic receipt image into a Bitmap respecting StoreProfile receipt customization and paper size.
      */
     fun generateReceiptBitmap(
         context: Context,
         transaction: Transaction,
         storeProfile: StoreProfile
     ): Bitmap {
-        val width = 576
-        val margin = 32f
-        // Calculate dynamic height based on number of items and text
-        val baseHeight = 840
+        val lang = storeProfile.language
+        val is58mm = storeProfile.paperSize == "58mm"
+        val width = if (is58mm) 440 else 576
+        val margin = if (is58mm) 24f else 32f
+        val baseHeight = 900
         val itemsHeight = transaction.items.size * 66
         val notesLines = storeProfile.receiptNotes.split("\n").size * 32
-        val trialExtraHeight = if (!com.example.util.LicenseManager.isProActivated()) 90 else 0
+        val trialExtraHeight = if (!LicenseManager.isProActivated()) 90 else 0
         val height = baseHeight + itemsHeight + notesLines + trialExtraHeight
 
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         canvas.drawColor(Color.WHITE)
 
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        val textSizeMain = if (is58mm) 20f else 24f
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.BLACK
-            textSize = 24f
+            textSize = textSizeMain
             typeface = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
         }
         val boldPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.BLACK
-            textSize = 25f
+            textSize = textSizeMain + 1f
             typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
         }
         val headerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.parseColor("#15803D") // Emerald green
-            textSize = 32f
+            color = Color.parseColor("#15803D")
+            textSize = if (is58mm) 28f else 32f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
         }
         val subHeaderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.DKGRAY
-            textSize = 22f
+            textSize = if (is58mm) 19f else 22f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
             textAlign = Paint.Align.CENTER
         }
@@ -85,95 +86,136 @@ object ReceiptExportHelper {
 
         var y = 40f
 
-        // Draw Store Logo if available with rounded corners and clean spacing
-        val rawLogo = ImageUtils.loadBitmap(context, storeProfile.logoUri)
-            ?: android.graphics.BitmapFactory.decodeResource(context.resources, com.example.R.drawable.logo_laku_kasir)
-        if (rawLogo != null) {
-            val logoSize = 104
-            val scaledLogo = Bitmap.createScaledBitmap(rawLogo, logoSize, logoSize, true)
-            val roundedLogo = getRoundedCornerBitmap(scaledLogo, 16f)
+        // Store Logo (if enabled)
+        if (storeProfile.showStoreLogoOnReceipt) {
+            val logoSize = if (is58mm) 86 else 104
             val logoX = (width - logoSize) / 2f
-            canvas.drawBitmap(roundedLogo, logoX, y, null)
+            val customBitmap = ImageUtils.loadBitmap(context, storeProfile.logoUri)
 
-            val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                style = Paint.Style.STROKE
-                strokeWidth = 2f
-                color = Color.parseColor("#E2E8F0")
+            if (customBitmap != null) {
+                val scaledLogo = Bitmap.createScaledBitmap(customBitmap, logoSize, logoSize, true)
+                val roundedLogo = getRoundedCornerBitmap(scaledLogo, 16f)
+                canvas.drawBitmap(roundedLogo, logoX, y, null)
+                val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.STROKE
+                    strokeWidth = 2f
+                    color = Color.parseColor("#E2E8F0")
+                }
+                canvas.drawRoundRect(
+                    android.graphics.RectF(logoX, y, logoX + logoSize, y + logoSize),
+                    16f, 16f, borderPaint
+                )
+                y += logoSize + 42f
+            } else if (storeProfile.storeIconKey != "default_logo") {
+                val badgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = storeProfile.storeIconBgColor.toInt()
+                }
+                canvas.drawRoundRect(
+                    android.graphics.RectF(logoX, y, logoX + logoSize, y + logoSize),
+                    20f, 20f, badgePaint
+                )
+                val initial = storeProfile.storeName.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "S"
+                val initialPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Color.WHITE
+                    textSize = logoSize * 0.52f
+                    typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                    textAlign = Paint.Align.CENTER
+                }
+                val textY = y + (logoSize / 2f) - ((initialPaint.descent() + initialPaint.ascent()) / 2f)
+                canvas.drawText(initial, width / 2f, textY, initialPaint)
+                y += logoSize + 42f
+            } else {
+                val defaultLogo = android.graphics.BitmapFactory.decodeResource(
+                    context.resources,
+                    com.example.R.drawable.logo_laku_kasir
+                )
+                if (defaultLogo != null) {
+                    val scaledLogo = Bitmap.createScaledBitmap(defaultLogo, logoSize, logoSize, true)
+                    val roundedLogo = getRoundedCornerBitmap(scaledLogo, 16f)
+                    canvas.drawBitmap(roundedLogo, logoX, y, null)
+                    y += logoSize + 42f
+                }
             }
-            canvas.drawRoundRect(
-                android.graphics.RectF(logoX, y, logoX + logoSize, y + logoSize),
-                16f, 16f, borderPaint
-            )
-
-            // Spacing to store name baseline
-            y += logoSize + 48f
         } else {
-            y += 24f
+            y += 16f
         }
 
-        // Top Store Header - Centered
-        canvas.drawText(storeProfile.storeName.uppercase(), width / 2f, y, headerPaint)
-        y += 38f
-        canvas.drawText("Pemilik: ${storeProfile.ownerName}", width / 2f, y, subHeaderPaint)
-        y += 30f
-        canvas.drawText(storeProfile.address, width / 2f, y, subHeaderPaint)
-        y += 30f
-        canvas.drawText("WA: ${storeProfile.phone}", width / 2f, y, subHeaderPaint)
-        y += 38f
+        // Store Header fields according to customization toggles
+        if (storeProfile.showStoreNameOnReceipt && storeProfile.storeName.isNotBlank()) {
+            canvas.drawText(storeProfile.storeName.uppercase(), width / 2f, y, headerPaint)
+            y += 34f
+        }
+        if (storeProfile.showCashierNameOnReceipt && storeProfile.ownerName.isNotBlank()) {
+            canvas.drawText("${LakuStrings.get("cashier_label", lang)}: ${storeProfile.ownerName}", width / 2f, y, subHeaderPaint)
+            y += 28f
+        }
+        if (storeProfile.showStoreAddressOnReceipt && storeProfile.address.isNotBlank()) {
+            canvas.drawText(storeProfile.address, width / 2f, y, subHeaderPaint)
+            y += 28f
+        }
+        if (storeProfile.showStorePhoneOnReceipt && storeProfile.phone.isNotBlank()) {
+            canvas.drawText("WA: ${storeProfile.phone}", width / 2f, y, subHeaderPaint)
+            y += 28f
+        }
+        if (storeProfile.showOperatingHoursOnReceipt && storeProfile.operatingHours.isNotBlank()) {
+            canvas.drawText("${LakuStrings.get("hours_label", lang)}: ${storeProfile.operatingHours}", width / 2f, y, subHeaderPaint)
+            y += 28f
+        }
+        y += 10f
 
-        // Divider
         canvas.drawLine(margin, y, width - margin, y, linePaint)
-        y += 34f
+        y += 32f
 
-        // Metadata rows
         fun drawRow(label: String, value: String, isBold: Boolean = false) {
             val p = if (isBold) boldPaint else textPaint
             canvas.drawText(label, margin, y, textPaint)
             val valWidth = p.measureText(value)
             canvas.drawText(value, width - margin - valWidth, y, p)
-            y += 36f
+            y += 34f
         }
 
-        drawRow("No. Struk", transaction.transactionCode, true)
-        drawRow("Tanggal", FormatUtils.formatDateTime(transaction.timestamp))
-        if (transaction.customerName.isNotBlank()) {
-            drawRow("Pelanggan", transaction.customerName)
+        drawRow(LakuStrings.get("receipt_no", lang), transaction.transactionCode, true)
+        drawRow(LakuStrings.get("receipt_date", lang), FormatUtils.formatDateTime(transaction.timestamp, lang))
+        if (storeProfile.showCustomerNameOnReceipt && transaction.customerName.isNotBlank()) {
+            drawRow(LakuStrings.get("receipt_customer", lang), transaction.customerName)
         }
-        if (transaction.customerPhone.isNotBlank()) {
-            drawRow("No. HP", transaction.customerPhone)
+        if (storeProfile.showCustomerNameOnReceipt && transaction.customerPhone.isNotBlank()) {
+            drawRow(LakuStrings.get("receipt_phone", lang), transaction.customerPhone)
         }
 
-        y += 10f
+        y += 8f
         canvas.drawLine(margin, y, width - margin, y, linePaint)
-        y += 34f
+        y += 32f
 
-        // Items
-        boldPaint.textSize = 25f
-        canvas.drawText("RINCIAN BARANG", margin, y, boldPaint)
-        y += 34f
+        canvas.drawText(LakuStrings.get("receipt_items_header", lang), margin, y, boldPaint)
+        y += 32f
 
         transaction.items.forEach { item ->
             canvas.drawText(item.productName, margin, y, boldPaint)
-            y += 28f
+            y += 26f
             val qtyPrice = "${FormatUtils.formatQty(item.quantity, item.unit)} x ${FormatUtils.formatRupiah(item.sellingPrice)}"
             val subtotal = FormatUtils.formatRupiah(item.subtotal)
             canvas.drawText(qtyPrice, margin, y, textPaint)
             val subWidth = textPaint.measureText(subtotal)
             canvas.drawText(subtotal, width - margin - subWidth, y, textPaint)
-            y += 34f
+            y += 32f
         }
 
         y += 8f
         canvas.drawLine(margin, y, width - margin, y, linePaint)
-        y += 34f
+        y += 32f
 
-        // Financials
-        drawRow("Subtotal", FormatUtils.formatRupiah(transaction.subtotal))
+        drawRow(LakuStrings.get("subtotal", lang), FormatUtils.formatRupiah(transaction.subtotal))
         if (transaction.discount > 0) {
-            drawRow("Diskon", "- ${FormatUtils.formatRupiah(transaction.discount)}")
+            drawRow(LakuStrings.get("discount", lang), "- ${FormatUtils.formatRupiah(transaction.discount)}")
         }
         if (transaction.ppnAmount > 0) {
-            drawRow(if (transaction.ppnRate > 0) "PPN (${transaction.ppnRate.toInt()}%)" else "PPN", "+ ${FormatUtils.formatRupiah(transaction.ppnAmount)}")
+            val ppnLabel = if (transaction.ppnRate > 0) {
+                "${LakuStrings.get("ppn_label", lang)} (${transaction.ppnRate.toInt()}%)"
+            } else {
+                LakuStrings.get("ppn_label", lang)
+            }
+            drawRow(ppnLabel, "+ ${FormatUtils.formatRupiah(transaction.ppnAmount)}")
         }
 
         y += 8f
@@ -182,77 +224,59 @@ object ReceiptExportHelper {
         canvas.drawLine(margin, y, width - margin, y, linePaint)
         linePaint.color = Color.LTGRAY
         linePaint.strokeWidth = 2f
-        y += 38f
+        y += 36f
 
         val totalPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.parseColor("#15803D")
-            textSize = 32f
+            textSize = if (is58mm) 26f else 32f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         }
-        canvas.drawText("TOTAL", margin, y, totalPaint)
+        canvas.drawText(LakuStrings.get("receipt_total", lang), margin, y, totalPaint)
         val totVal = FormatUtils.formatRupiah(transaction.total)
         val totWidth = totalPaint.measureText(totVal)
         canvas.drawText(totVal, width - margin - totWidth, y, totalPaint)
-        y += 42f
+        y += 40f
 
-        drawRow("Metode Bayar", transaction.paymentMethod)
+        drawRow(LakuStrings.get("receipt_method", lang), LakuStrings.translatePaymentMethod(transaction.paymentMethod, lang))
         if (transaction.paymentMethod == "Tunai") {
-            drawRow("Diterima", FormatUtils.formatRupiah(transaction.cashReceived))
-            drawRow("Kembalian", FormatUtils.formatRupiah(transaction.changeAmount), true)
+            drawRow(LakuStrings.get("receipt_cash_received", lang), FormatUtils.formatRupiah(transaction.cashReceived))
+            drawRow(LakuStrings.get("change", lang), FormatUtils.formatRupiah(transaction.changeAmount), true)
         }
-        drawRow("Status", if (transaction.isPaid) "LUNAS" else "KASBON / BELUM LUNAS", true)
+        drawRow(
+            LakuStrings.get("receipt_status", lang),
+            if (transaction.isPaid) LakuStrings.get("paid_badge", lang) else LakuStrings.get("debt_badge", lang),
+            true
+        )
 
-        y += 12f
+        y += 10f
         canvas.drawLine(margin, y, width - margin, y, linePaint)
-        y += 38f
+        y += 34f
 
-        // Thank you note
         val centerNotePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.DKGRAY
-            textSize = 22f
+            textSize = if (is58mm) 18f else 22f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
             textAlign = Paint.Align.CENTER
         }
         storeProfile.receiptNotes.split("\n").forEach { line ->
             canvas.drawText(line, width / 2f, y, centerNotePaint)
-            y += 30f
+            y += 28f
         }
 
-        y += 18f
+        y += 16f
         val footerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.GRAY
-            textSize = 18f
+            textSize = if (is58mm) 16f else 18f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.ITALIC)
             textAlign = Paint.Align.CENTER
         }
         canvas.drawText("Laku Kasir Pro v1.1 - by Rafline Dev", width / 2f, y, footerPaint)
 
-        // Watermark Mode Trial / Demo (Hilang otomatis saat versi PRO aktif)
-        if (!com.example.util.LicenseManager.isProActivated()) {
-            y += 28f
-            val trialWatermarkPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.parseColor("#E65100")
-                textSize = 19f
-                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-                textAlign = Paint.Align.CENTER
-            }
-            canvas.drawText("*** MODE UJI COBA / TRIAL VERSION ***", width / 2f, y, trialWatermarkPaint)
-            y += 24f
-            val trialSubPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.parseColor("#C62828")
-                textSize = 15f
-                typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-                textAlign = Paint.Align.CENTER
-            }
-            canvas.drawText("Batas 3 Transaksi & 3 Produk (Hubungi Penjual untuk Lisensi PRO)", width / 2f, y, trialSubPaint)
-        }
-
-        return bitmap
+        // Trim unused white space at bottom nicely
+        val finalHeight = (y + 44f).toInt().coerceIn(300, height)
+        return Bitmap.createBitmap(bitmap, 0, 0, width, finalHeight)
     }
 
-    /**
-     * Saves receipt image to shared cache and returns content Uri for sharing
-     */
     fun saveReceiptImageToCache(
         context: Context,
         transaction: Transaction,
@@ -262,25 +286,17 @@ object ReceiptExportHelper {
             val bitmap = generateReceiptBitmap(context, transaction, storeProfile)
             val cacheDir = File(context.cacheDir, "receipts").apply { mkdirs() }
             val file = File(cacheDir, "Struk_${transaction.transactionCode}.png")
-            val fos = FileOutputStream(file)
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)
-            fos.flush()
-            fos.close()
-
-            FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                file
-            )
+            FileOutputStream(file).use { fos ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)
+                fos.flush()
+            }
+            FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
         } catch (e: Exception) {
             e.printStackTrace()
             null
         }
     }
 
-    /**
-     * Downloads / saves receipt image into the public Pictures/LakuKasir directory
-     */
     fun downloadReceiptImage(
         context: Context,
         transaction: Transaction,
@@ -301,10 +317,11 @@ object ReceiptExportHelper {
                 if (imageUri != null) {
                     val out: OutputStream? = resolver.openOutputStream(imageUri)
                     if (out != null) {
-                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-                        out.flush()
-                        out.close()
-                        Toast.makeText(context, "Gambar struk disimpan ke Galeri/Pictures!", Toast.LENGTH_LONG).show()
+                        out.use {
+                            bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
+                            it.flush()
+                        }
+                        Toast.makeText(context, "Saved to Pictures/LakuKasir", Toast.LENGTH_LONG).show()
                         return true
                     }
                 }
@@ -312,24 +329,21 @@ object ReceiptExportHelper {
                 val picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
                 val folder = File(picturesDir, "LakuKasir").apply { mkdirs() }
                 val file = File(folder, filename)
-                val fos = FileOutputStream(file)
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)
-                fos.flush()
-                fos.close()
-                Toast.makeText(context, "Gambar disimpan ke: ${file.absolutePath}", Toast.LENGTH_LONG).show()
+                FileOutputStream(file).use { fos ->
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)
+                    fos.flush()
+                }
+                Toast.makeText(context, "Saved: ${file.absolutePath}", Toast.LENGTH_LONG).show()
                 return true
             }
             false
         } catch (e: Exception) {
             e.printStackTrace()
-            Toast.makeText(context, "Gagal mengunduh gambar: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
             false
         }
     }
 
-    /**
-     * Generates a PDF file of the receipt and returns content Uri for sharing
-     */
     fun saveReceiptPdfToCache(
         context: Context,
         transaction: Transaction,
@@ -338,37 +352,25 @@ object ReceiptExportHelper {
         return try {
             val bitmap = generateReceiptBitmap(context, transaction, storeProfile)
             val pdfDocument = PdfDocument()
-
-            // Page description: 72 points per inch (600px -> 600 width)
             val pageInfo = PdfDocument.PageInfo.Builder(bitmap.width, bitmap.height, 1).create()
             val page = pdfDocument.startPage(pageInfo)
-
-            val canvas = page.canvas
-            canvas.drawBitmap(bitmap, 0f, 0f, null)
+            page.canvas.drawBitmap(bitmap, 0f, 0f, null)
             pdfDocument.finishPage(page)
 
             val cacheDir = File(context.cacheDir, "receipts").apply { mkdirs() }
             val file = File(cacheDir, "Struk_${transaction.transactionCode}.pdf")
-            val fos = FileOutputStream(file)
-            pdfDocument.writeTo(fos)
-            pdfDocument.close()
-            fos.flush()
-            fos.close()
-
-            FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                file
-            )
+            FileOutputStream(file).use { fos ->
+                pdfDocument.writeTo(fos)
+                pdfDocument.close()
+                fos.flush()
+            }
+            FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
         } catch (e: Exception) {
             e.printStackTrace()
             null
         }
     }
 
-    /**
-     * Downloads / saves receipt PDF to public Downloads/LakuKasir directory
-     */
     fun downloadReceiptPdf(
         context: Context,
         transaction: Transaction,
@@ -395,11 +397,12 @@ object ReceiptExportHelper {
                 if (pdfUri != null) {
                     val out: OutputStream? = resolver.openOutputStream(pdfUri)
                     if (out != null) {
-                        pdfDocument.writeTo(out)
-                        pdfDocument.close()
-                        out.flush()
-                        out.close()
-                        Toast.makeText(context, "PDF Struk berhasil diunduh ke folder Downloads!", Toast.LENGTH_LONG).show()
+                        out.use {
+                            pdfDocument.writeTo(it)
+                            pdfDocument.close()
+                            it.flush()
+                        }
+                        Toast.makeText(context, "PDF saved to Downloads/LakuKasir", Toast.LENGTH_LONG).show()
                         return true
                     }
                 }
@@ -407,101 +410,75 @@ object ReceiptExportHelper {
                 val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
                 val folder = File(downloadsDir, "LakuKasir").apply { mkdirs() }
                 val file = File(folder, filename)
-                val fos = FileOutputStream(file)
-                pdfDocument.writeTo(fos)
-                pdfDocument.close()
-                fos.flush()
-                fos.close()
-                Toast.makeText(context, "PDF disimpan ke: ${file.absolutePath}", Toast.LENGTH_LONG).show()
+                FileOutputStream(file).use { fos ->
+                    pdfDocument.writeTo(fos)
+                    pdfDocument.close()
+                    fos.flush()
+                }
+                Toast.makeText(context, "PDF saved: ${file.absolutePath}", Toast.LENGTH_LONG).show()
                 return true
             }
             false
         } catch (e: Exception) {
             e.printStackTrace()
-            Toast.makeText(context, "Gagal mengunduh PDF: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "PDF Error: ${e.message}", Toast.LENGTH_SHORT).show()
             false
         }
     }
 
-    /**
-     * Shares receipt image directly to WhatsApp or WhatsApp Business
-     */
     fun shareReceiptImageToWhatsApp(
         context: Context,
         transaction: Transaction,
         storeProfile: StoreProfile,
         caption: String = ""
     ) {
-        val uri = saveReceiptImageToCache(context, transaction, storeProfile)
-        if (uri == null) {
-            Toast.makeText(context, "Gagal membuat gambar struk", Toast.LENGTH_SHORT).show()
-            return
-        }
-
+        val uri = saveReceiptImageToCache(context, transaction, storeProfile) ?: return
         try {
             val intent = Intent(Intent.ACTION_SEND).apply {
                 type = "image/png"
                 putExtra(Intent.EXTRA_STREAM, uri)
-                if (caption.isNotBlank()) {
-                    putExtra(Intent.EXTRA_TEXT, caption)
-                }
+                if (caption.isNotBlank()) putExtra(Intent.EXTRA_TEXT, caption)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 setPackage("com.whatsapp")
             }
             context.startActivity(intent)
         } catch (e: Exception) {
-            // Fallback to WhatsApp Business or general share if WhatsApp is not directly installed
             try {
                 val intent = Intent(Intent.ACTION_SEND).apply {
                     type = "image/png"
                     putExtra(Intent.EXTRA_STREAM, uri)
-                    if (caption.isNotBlank()) {
-                        putExtra(Intent.EXTRA_TEXT, caption)
-                    }
+                    if (caption.isNotBlank()) putExtra(Intent.EXTRA_TEXT, caption)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     setPackage("com.whatsapp.w4b")
                 }
                 context.startActivity(intent)
             } catch (ex: Exception) {
-                // Universal share fallback
                 val chooser = Intent.createChooser(
                     Intent(Intent.ACTION_SEND).apply {
                         type = "image/png"
                         putExtra(Intent.EXTRA_STREAM, uri)
-                        if (caption.isNotBlank()) {
-                            putExtra(Intent.EXTRA_TEXT, caption)
-                        }
+                        if (caption.isNotBlank()) putExtra(Intent.EXTRA_TEXT, caption)
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     },
-                    "Bagikan Gambar Struk"
+                    LakuStrings.get("share_btn", storeProfile.language)
                 )
                 context.startActivity(chooser)
             }
         }
     }
 
-    /**
-     * Shares receipt PDF to WhatsApp
-     */
     fun shareReceiptPdfToWhatsApp(
         context: Context,
         transaction: Transaction,
         storeProfile: StoreProfile,
         caption: String = ""
     ) {
-        val uri = saveReceiptPdfToCache(context, transaction, storeProfile)
-        if (uri == null) {
-            Toast.makeText(context, "Gagal membuat PDF struk", Toast.LENGTH_SHORT).show()
-            return
-        }
-
+        val uri = saveReceiptPdfToCache(context, transaction, storeProfile) ?: return
         try {
             val intent = Intent(Intent.ACTION_SEND).apply {
                 type = "application/pdf"
                 putExtra(Intent.EXTRA_STREAM, uri)
-                if (caption.isNotBlank()) {
-                    putExtra(Intent.EXTRA_TEXT, caption)
-                }
+                if (caption.isNotBlank()) putExtra(Intent.EXTRA_TEXT, caption)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 setPackage("com.whatsapp")
             }
@@ -511,9 +488,7 @@ object ReceiptExportHelper {
                 val intent = Intent(Intent.ACTION_SEND).apply {
                     type = "application/pdf"
                     putExtra(Intent.EXTRA_STREAM, uri)
-                    if (caption.isNotBlank()) {
-                        putExtra(Intent.EXTRA_TEXT, caption)
-                    }
+                    if (caption.isNotBlank()) putExtra(Intent.EXTRA_TEXT, caption)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     setPackage("com.whatsapp.w4b")
                 }
@@ -523,21 +498,16 @@ object ReceiptExportHelper {
                     Intent(Intent.ACTION_SEND).apply {
                         type = "application/pdf"
                         putExtra(Intent.EXTRA_STREAM, uri)
-                        if (caption.isNotBlank()) {
-                            putExtra(Intent.EXTRA_TEXT, caption)
-                        }
+                        if (caption.isNotBlank()) putExtra(Intent.EXTRA_TEXT, caption)
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     },
-                    "Bagikan PDF Struk"
+                    LakuStrings.get("share_btn", storeProfile.language)
                 )
                 context.startActivity(chooser)
             }
         }
     }
 
-    /**
-     * Prints receipt using Android Print Spooler (supports Bluetooth thermal printer, Wi-Fi printer, or PDF)
-     */
     fun printReceipt(
         context: Context,
         transaction: Transaction,
@@ -587,28 +557,15 @@ object ReceiptExportHelper {
                             val page = printedDoc.startPage(0)
                             val canvas = page.canvas
                             val pageWidth = printedDoc.pageWidth.toFloat()
-                            val pageHeight = printedDoc.pageHeight.toFloat()
 
-                            // Fit receipt width to paper roll width (larger, clear and legible, not edge-to-edge)
                             val targetWidth = when {
-                                pageWidth <= 320f -> {
-                                    // Thermal paper roll (58mm - 80mm): 90% of paper width (leaves safe margin without cutting edges)
-                                    pageWidth * 0.90f
-                                }
-                                pageWidth <= 450f -> {
-                                    // A5 or small slip: 82% of paper width
-                                    pageWidth * 0.82f
-                                }
-                                else -> {
-                                    // Standard A4 / Letter paper: ~80% of paper width (~475pt - 490pt)
-                                    // Dibuat agak besar dan mudah dibaca, tapi jangan terlalu full sesuai kertas (ada margin nyaman ~10% kiri & kanan)
-                                    pageWidth * 0.80f
-                                }
+                                pageWidth <= 320f -> pageWidth * 0.90f
+                                pageWidth <= 450f -> pageWidth * 0.82f
+                                storeProfile.paperSize == "58mm" -> pageWidth * 0.65f
+                                else -> pageWidth * 0.80f
                             }
                             val scale = targetWidth / bitmap.width.toFloat()
                             val scaledWidth = bitmap.width * scale
-
-                            // Horizontally center receipt perfectly on the printer paper
                             val offsetX = (pageWidth - scaledWidth) / 2f
                             val offsetY = 20f
 
@@ -620,10 +577,10 @@ object ReceiptExportHelper {
 
                             printedDoc.finishPage(page)
 
-                            val output = java.io.FileOutputStream(destination?.fileDescriptor)
-                            printedDoc.writeTo(output)
-                            output.flush()
-                            output.close()
+                            FileOutputStream(destination?.fileDescriptor).use { output ->
+                                printedDoc.writeTo(output)
+                                output.flush()
+                            }
                             printedDoc.close()
                             callback?.onWriteFinished(arrayOf(android.print.PageRange.ALL_PAGES))
                         } catch (e: Exception) {
@@ -638,10 +595,10 @@ object ReceiptExportHelper {
                     android.print.PrintAttributes.Builder().build()
                 )
             } else {
-                Toast.makeText(context, "Layanan cetak tidak tersedia di perangkat ini", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Print service unavailable", Toast.LENGTH_SHORT).show()
             }
         } catch (e: Exception) {
-            Toast.makeText(context, "Gagal mencetak struk: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Print error: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 }

@@ -1,19 +1,23 @@
 package com.example
 
+import android.content.Context
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ui.LakuKasirViewModel
 import com.example.ui.Screen
+import com.example.ui.components.LicenseActivationDialog
 import com.example.ui.screens.AddEditProductScreen
 import com.example.ui.screens.CheckoutScreen
 import com.example.ui.screens.DashboardScreen
@@ -24,10 +28,20 @@ import com.example.ui.screens.ProductListScreen
 import com.example.ui.screens.ReceiptScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.SplashScreen
-import com.example.ui.components.LicenseActivationDialog
 import com.example.ui.theme.LakuKasirTheme
 
 class MainActivity : ComponentActivity() {
+
+    // Lock system Configuration fontScale to 1.0f so device font size settings never resize app fonts
+    override fun attachBaseContext(newBase: Context) {
+        val config = Configuration(newBase.resources.configuration)
+        if (config.fontScale != 1.0f) {
+            config.fontScale = 1.0f
+        }
+        val lockedContext = newBase.createConfigurationContext(config)
+        super.attachBaseContext(lockedContext)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -43,7 +57,7 @@ class MainActivity : ComponentActivity() {
             LakuKasirTheme(themeSetting = if (currentScreen == Screen.SPLASH) "light" else storeProfile.themeMode) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = if (currentScreen == Screen.SPLASH) androidx.compose.ui.graphics.Color(0xFFE8F5E9) else androidx.compose.material3.MaterialTheme.colorScheme.background
+                    color = if (currentScreen == Screen.SPLASH) Color(0xFFE8F5E9) else MaterialTheme.colorScheme.background
                 ) {
                     // Back button handling
                     BackHandler(enabled = currentScreen != Screen.POS && currentScreen != Screen.SPLASH) {
@@ -58,6 +72,7 @@ class MainActivity : ComponentActivity() {
                     when (currentScreen) {
                         Screen.SPLASH -> {
                             SplashScreen(
+                                lang = storeProfile.language,
                                 onContinue = { viewModel.finishSplash() }
                             )
                         }

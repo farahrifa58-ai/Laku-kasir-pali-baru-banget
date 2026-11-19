@@ -83,6 +83,7 @@ fun CheckoutScreen(
     onSuccess: (Transaction) -> Unit
 ) {
     val cart by viewModel.cart.collectAsState()
+    val discountMode by viewModel.discountMode.collectAsState()
     val manualDiscount by viewModel.manualDiscount.collectAsState()
     val isPpnAuto by viewModel.isPpnAuto.collectAsState()
     val ppnRate by viewModel.ppnRate.collectAsState()
@@ -90,9 +91,10 @@ fun CheckoutScreen(
     val selectedPaymentMethod by viewModel.selectedPaymentMethod.collectAsState()
     val cashReceivedText by viewModel.cashReceivedInput.collectAsState()
 
-    // Highly reactive financial calculations using FormatUtils.parseNumberFromDotted
     val cartSubtotal = remember(cart) { cart.sumOf { it.subtotal } }
-    val discountVal = remember(manualDiscount) { FormatUtils.parseNumberFromDotted(manualDiscount) }
+    val discountVal = remember(cartSubtotal, discountMode, manualDiscount) {
+        viewModel.calculateDiscountAmount(cartSubtotal, discountMode, manualDiscount)
+    }
     val manualPpnVal = remember(manualPpnAmountText) { FormatUtils.parseNumberFromDotted(manualPpnAmountText) }
     val ppnVal = remember(isPpnAuto, ppnRate, manualPpnVal, cartSubtotal, discountVal) {
         when {
@@ -141,7 +143,7 @@ fun CheckoutScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.testTag("checkout_back_button")) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = LakuStrings.get("back", lang))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -170,7 +172,7 @@ fun CheckoutScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "TOTAL TAGIHAN",
+                        text = LakuStrings.get("total_bill", lang),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White.copy(alpha = 0.85f),
@@ -186,7 +188,7 @@ fun CheckoutScreen(
                     if (discountVal > 0) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Hemat Diskon: ${FormatUtils.formatRupiah(discountVal)}",
+                            text = "${LakuStrings.get("saved_discount", lang)} ${FormatUtils.formatRupiah(discountVal)}",
                             fontSize = 12.sp,
                             color = Color(0xFFFFD54F),
                             fontWeight = FontWeight.SemiBold
@@ -195,75 +197,80 @@ fun CheckoutScreen(
                 }
             }
 
-            // Pilihan Metode Pembayaran: Tunai, Transfer, QRIS, Debit/Kredit, Kasbon
+            // Payment Methods
             Text(
                 text = LakuStrings.get("payment_method", lang),
                 fontWeight = FontWeight.Bold,
                 fontSize = 15.sp
             )
 
-            FlowRow(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Categories.PAYMENT_METHODS.forEach { method ->
-                    val isSelected = selectedPaymentMethod == method
-                    val icon: ImageVector = when (method) {
-                        "Tunai" -> Icons.Default.Money
-                        "Transfer" -> Icons.Default.AccountBalance
-                        "QRIS" -> Icons.Default.QrCode
-                        "Debit/Kredit" -> Icons.Default.CreditCard
-                        "Kasbon" -> Icons.Default.PendingActions
-                        else -> Icons.Default.Money
-                    }
-
-                    Surface(
-                        onClick = {
-                            viewModel.selectedPaymentMethod.value = method
-                            if (method == "Tunai" && cashReceivedText.isBlank()) {
-                                viewModel.setExactCash()
-                            }
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (isSelected) {
-                            if (method == "Kasbon") StatusDebt else EmeraldGreenPrimary
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                        },
-                        border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                        modifier = Modifier.testTag("payment_method_$method")
+                Categories.PAYMENT_METHODS.chunked(2).forEach { rowMethods ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
-                        ) {
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = null,
-                                tint = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            val methodLabel = when (method) {
-                                "Tunai" -> LakuStrings.get("cash", lang)
-                                "Transfer" -> LakuStrings.get("transfer", lang)
-                                "QRIS" -> LakuStrings.get("qris", lang)
-                                "Kasbon" -> LakuStrings.get("debt", lang)
-                                else -> method
+                        rowMethods.forEach { method ->
+                            val isSelected = selectedPaymentMethod == method
+                            val icon: ImageVector = when (method) {
+                                "Tunai" -> Icons.Default.Money
+                                "Transfer" -> Icons.Default.AccountBalance
+                                "QRIS" -> Icons.Default.QrCode
+                                "Debit/Kredit" -> Icons.Default.CreditCard
+                                "Kasbon" -> Icons.Default.PendingActions
+                                else -> Icons.Default.Money
                             }
-                            Text(
-                                text = methodLabel,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                fontSize = 13.sp,
-                                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
-                            )
+
+                            Surface(
+                                onClick = {
+                                    viewModel.selectedPaymentMethod.value = method
+                                    if (method == "Tunai" && cashReceivedText.isBlank()) {
+                                        viewModel.setExactCash()
+                                    }
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isSelected) {
+                                    if (method == "Kasbon") StatusDebt else EmeraldGreenPrimary
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                },
+                                border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(46.dp)
+                                    .testTag("payment_method_$method")
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center,
+                                    modifier = Modifier.padding(horizontal = 12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = null,
+                                        tint = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = LakuStrings.translatePaymentMethod(method, lang),
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        fontSize = 13.sp,
+                                        color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            // Jika Tunai: Fitur uang tunai yang diterima, uang pas, nominal cepat, dan kembalian
+            // Cash Payment Section
             if (selectedPaymentMethod == "Tunai") {
                 Card(
                     shape = RoundedCornerShape(16.dp),
@@ -279,12 +286,11 @@ fun CheckoutScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Pembayaran Tunai (Cash)",
+                                text = LakuStrings.get("cash_payment_title", lang),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
                                 color = EmeraldGreenDark
                             )
-                            // Shortcut tombol Uang Pas
                             Surface(
                                 onClick = { viewModel.setExactCash() },
                                 shape = RoundedCornerShape(8.dp),
@@ -297,7 +303,7 @@ fun CheckoutScreen(
                                 ) {
                                     Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Uang Pas", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    Text(LakuStrings.get("exact_cash", lang), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                 }
                             }
                         }
@@ -306,7 +312,7 @@ fun CheckoutScreen(
                             value = cashReceivedText,
                             onValueChange = { viewModel.cashReceivedInput.value = FormatUtils.formatInputDotted(it) },
                             label = { Text(LakuStrings.get("cash_received", lang)) },
-                            placeholder = { Text("Contoh: ${FormatUtils.formatNumberWithDots(totalPayable)}") },
+                            placeholder = { Text("${LakuStrings.get("example_prefix", lang)} ${FormatUtils.formatNumberWithDots(totalPayable)}") },
                             prefix = { Text("${FormatUtils.currencySymbol} ", fontWeight = FontWeight.Bold) },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier
@@ -316,9 +322,8 @@ fun CheckoutScreen(
                             shape = RoundedCornerShape(12.dp)
                         )
 
-                        // Quick cash nominal buttons
                         Text(
-                            text = "Tambah Cepat:",
+                            text = LakuStrings.get("quick_add", lang),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -344,7 +349,6 @@ fun CheckoutScreen(
                             }
                         }
 
-                        // Nominal Kembalian (Cukup nominal saja saat uang lebih tanpa keterangan tambahan)
                         Surface(
                             shape = RoundedCornerShape(12.dp),
                             color = if (changeAmount > 0.0) EmeraldGreenPrimary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
@@ -375,7 +379,6 @@ fun CheckoutScreen(
                     }
                 }
             } else if (selectedPaymentMethod == "Kasbon") {
-                // Info Kasbon
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = StatusDebt.copy(alpha = 0.12f),
@@ -383,14 +386,14 @@ fun CheckoutScreen(
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         Text(
-                            text = "Catatan Kasbon (Hutang Belanja)",
+                            text = LakuStrings.get("debt_note_title", lang),
                             fontWeight = FontWeight.Bold,
                             color = StatusDebt,
                             fontSize = 14.sp
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Transaksi akan tercatat belum lunas. Anda dapat menandai lunas kapan saja di menu Riwayat Transaksi.",
+                            text = LakuStrings.get("debt_note_desc", lang),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -398,7 +401,7 @@ fun CheckoutScreen(
                 }
             }
 
-            // Fitur PPN (Bisa diisi manual atau otomatis persentase PPN)
+            // Tax / PPN Section
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
@@ -412,14 +415,14 @@ fun CheckoutScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                             Text(
-                                text = "Pajak Pertambahan Nilai (PPN)",
+                                text = LakuStrings.get("ppn_full_title", lang),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp
                             )
                             Text(
-                                text = "Hitung PPN otomatis atau isi nominal manual",
+                                text = LakuStrings.get("ppn_full_desc", lang),
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -442,8 +445,9 @@ fun CheckoutScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            val rateLabel = if (ppnRate % 1.0 == 0.0) "${ppnRate.toInt()}%" else "$ppnRate%"
                             Text(
-                                text = "Tarif PPN: ${ppnRate.toInt()}%",
+                                text = "${LakuStrings.get("ppn_rate_prefix", lang)} $rateLabel",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -457,9 +461,9 @@ fun CheckoutScreen(
                     } else {
                         OutlinedTextField(
                             value = manualPpnAmountText,
-                            onValueChange = { viewModel.manualPpnAmount.value = it.filter { ch -> ch.isDigit() } },
-                            label = { Text("Nominal PPN Manual (Opsional)") },
-                            prefix = { Text("Rp ") },
+                            onValueChange = { viewModel.manualPpnAmount.value = FormatUtils.formatInputDotted(it) },
+                            label = { Text(LakuStrings.get("manual_ppn_label", lang)) },
+                            prefix = { Text("${FormatUtils.currencySymbol} ") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             placeholder = { Text("0") },
                             modifier = Modifier.fillMaxWidth(),
@@ -470,9 +474,7 @@ fun CheckoutScreen(
                 }
             }
 
-
-
-            // Tombol Selesaikan Transaksi
+            // Confirm Checkout Button
             Button(
                 onClick = {
                     viewModel.processCheckout { savedTx ->
@@ -489,7 +491,7 @@ fun CheckoutScreen(
                 Icon(imageVector = Icons.Default.Check, contentDescription = null, tint = Color.White)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (lang == "en") "Confirm & View Receipt" else "Konfirmasi & Cetak Struk",
+                    text = LakuStrings.get("confirm_view_receipt", lang),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White

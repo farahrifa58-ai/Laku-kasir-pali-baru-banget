@@ -16,6 +16,7 @@ import java.util.Locale
 
 object FormatUtils {
     var currentCurrencyCode: String by mutableStateOf("IDR")
+    var currentLanguageCode: String by mutableStateOf("id")
 
     val currencySymbol: String
         get() = CurrencyCatalog.getCurrency(currentCurrencyCode).symbol
@@ -44,14 +45,9 @@ object FormatUtils {
         }
     }
 
-    /**
-     * Formats a raw user input string with dot thousand separators as they type.
-     * Example: "10000" -> "10.000", "100000" -> "100.000", "1000000" -> "1.000.000"
-     */
     fun formatInputDotted(rawInput: String): String {
         val cleanDigits = rawInput.filter { it.isDigit() }
         if (cleanDigits.isEmpty()) return ""
-        // Remove leading zeroes unless the whole number is 0
         val trimmed = cleanDigits.trimStart('0').ifEmpty { "0" }
         return try {
             val number = trimmed.toLong()
@@ -65,20 +61,12 @@ object FormatUtils {
         }
     }
 
-    /**
-     * Parses a dotted string into a Double value.
-     * Example: "100.000" -> 100000.0
-     */
     fun parseNumberFromDotted(dottedStr: String): Double {
         if (dottedStr.isBlank()) return 0.0
         val clean = dottedStr.replace(".", "").trim()
         return clean.toDoubleOrNull() ?: 0.0
     }
 
-    /**
-     * Formats a double into dotted integer text without symbol.
-     * Example: 10000.0 -> "10.000"
-     */
     fun formatNumberWithDots(number: Double): String {
         if (number == 0.0) return ""
         val symbols = DecimalFormatSymbols(Locale.US).apply {
@@ -88,18 +76,16 @@ object FormatUtils {
         return formatter.format(number.toLong())
     }
 
-    /**
-     * Backward-compatible helper method that delegates to the selected currency
-     */
     fun formatRupiah(amount: Double): String {
         return formatCurrency(amount, currentCurrencyCode)
     }
 
     fun formatQty(qty: Double, unit: String): String {
+        val localizedUnit = LakuStrings.translateUnit(unit, currentLanguageCode)
         return if (qty % 1.0 == 0.0) {
-            "${qty.toInt()} $unit"
+            "${qty.toInt()} $localizedUnit"
         } else {
-            String.format(Locale.US, "%.2f %s", qty, unit)
+            String.format(Locale.US, "%.2f %s", qty, localizedUnit)
         }
     }
 
@@ -111,19 +97,19 @@ object FormatUtils {
         }
     }
 
-    fun formatDateTime(timestamp: Long): String {
-        val sdf = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale("id", "ID"))
+    fun formatDateTime(timestamp: Long, lang: String = currentLanguageCode): String {
+        val sdf = SimpleDateFormat("dd MMM yyyy, HH:mm", LakuStrings.localeFor(lang))
         return sdf.format(Date(timestamp))
     }
 
-    fun formatDateShort(timestamp: Long): String {
-        val sdf = SimpleDateFormat("dd/MM/yyyy", Locale("id", "ID"))
+    fun formatDateShort(timestamp: Long, lang: String = currentLanguageCode): String {
+        val sdf = SimpleDateFormat("dd/MM/yyyy", LakuStrings.localeFor(lang))
         return sdf.format(Date(timestamp))
     }
 
     fun openWhatsApp(context: Context, phone: String, message: String = "") {
         if (phone.isBlank()) {
-            Toast.makeText(context, "Nomor WhatsApp belum diisi", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, LakuStrings.get("whatsapp_no", currentLanguageCode), Toast.LENGTH_SHORT).show()
             return
         }
         var cleanPhone = phone.replace(Regex("[^0-9]"), "")
@@ -136,7 +122,7 @@ object FormatUtils {
             val intent = Intent(Intent.ACTION_VIEW, uri)
             context.startActivity(intent)
         } catch (e: Exception) {
-            Toast.makeText(context, "Gagal membuka WhatsApp: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "WhatsApp error: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -146,7 +132,7 @@ object FormatUtils {
             val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))
             context.startActivity(intent)
         } catch (e: Exception) {
-            Toast.makeText(context, "Gagal membuka telepon", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Dialer error: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -159,7 +145,7 @@ object FormatUtils {
             }
             context.startActivity(Intent.createChooser(intent, title))
         } catch (e: Exception) {
-            Toast.makeText(context, "Gagal membagikan struk", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Share error: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 }

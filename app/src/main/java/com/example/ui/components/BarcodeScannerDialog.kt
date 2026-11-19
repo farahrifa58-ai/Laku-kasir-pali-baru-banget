@@ -77,6 +77,8 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import com.example.ui.theme.EmeraldGreenDark
 import com.example.ui.theme.EmeraldGreenPrimary
+import com.example.util.FormatUtils
+import com.example.util.LakuStrings
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -85,6 +87,7 @@ import java.util.concurrent.Executors
 
 @Composable
 fun BarcodeScannerDialog(
+    lang: String = FormatUtils.currentLanguageCode,
     onDismiss: () -> Unit,
     onBarcodeScanned: (String) -> Unit
 ) {
@@ -105,7 +108,7 @@ fun BarcodeScannerDialog(
     ) { granted ->
         hasCameraPermission = granted
         if (!granted) {
-            Toast.makeText(context, "Izin kamera diperlukan untuk scan barcode", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, LakuStrings.get("camera_permission_title", lang), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -272,7 +275,7 @@ fun BarcodeScannerDialog(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Tutup",
+                            contentDescription = LakuStrings.get("close", lang),
                             tint = Color.White
                         )
                     }
@@ -293,7 +296,7 @@ fun BarcodeScannerDialog(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Scan Barcode Produk",
+                                text = LakuStrings.get("scan_barcode_title", lang),
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp
@@ -312,7 +315,7 @@ fun BarcodeScannerDialog(
                     ) {
                         Icon(
                             imageVector = if (isTorchOn) Icons.Default.FlashOn else Icons.Default.FlashOff,
-                            contentDescription = "Senter",
+                            contentDescription = "Flash",
                             tint = if (isTorchOn) Color(0xFFFFD54F) else Color.White
                         )
                     }
@@ -327,7 +330,7 @@ fun BarcodeScannerDialog(
                         .padding(bottom = 48.dp)
                 ) {
                     Text(
-                        text = "Arahkan kamera ke barcode / QR code produk",
+                        text = LakuStrings.get("scan_barcode_hint", lang),
                         color = Color.White,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
@@ -353,7 +356,7 @@ fun BarcodeScannerDialog(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Izin Kamera Diperlukan",
+                        text = LakuStrings.get("camera_permission_title", lang),
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
@@ -361,7 +364,7 @@ fun BarcodeScannerDialog(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Untuk menggunakan fitur scan barcode otomatis, mohon izinkan aplikasi mengakses kamera perangkat Anda.",
+                        text = LakuStrings.get("camera_permission_desc", lang),
                         color = Color.White.copy(alpha = 0.8f),
                         fontSize = 14.sp,
                         textAlign = TextAlign.Center
@@ -373,7 +376,7 @@ fun BarcodeScannerDialog(
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth(0.8f)
                     ) {
-                        Text("Berikan Izin Kamera", fontWeight = FontWeight.Bold, color = Color.White)
+                        Text(LakuStrings.get("grant_camera_permission", lang), fontWeight = FontWeight.Bold, color = Color.White)
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     Button(
@@ -382,7 +385,7 @@ fun BarcodeScannerDialog(
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth(0.8f)
                     ) {
-                        Text("Batal", color = Color.White)
+                        Text(LakuStrings.get("cancel", lang), color = Color.White)
                     }
                 }
             }

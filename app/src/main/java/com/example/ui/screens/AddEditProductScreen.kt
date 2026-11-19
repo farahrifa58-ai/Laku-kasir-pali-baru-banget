@@ -150,7 +150,7 @@ fun AddEditProductScreen(
 
     val onPerformSave = {
         if (name.isBlank()) {
-            errorMessage = "Nama produk wajib diisi!"
+            errorMessage = LakuStrings.get("product_name_required", lang)
         } else {
             val sellingPrice = FormatUtils.parseNumberFromDotted(sellingPriceText)
             val costPrice = FormatUtils.parseNumberFromDotted(costPriceText)
@@ -186,7 +186,7 @@ fun AddEditProductScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.testTag("add_product_back_button")) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = LakuStrings.get("back", lang))
                     }
                 },
                 actions = {
@@ -207,7 +207,7 @@ fun AddEditProductScreen(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "Simpan",
+                            text = LakuStrings.get("save", lang),
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
                             fontSize = 14.sp
@@ -253,7 +253,7 @@ fun AddEditProductScreen(
                                 .data(imageUri)
                                 .crossfade(true)
                                 .build(),
-                            contentDescription = "Foto Produk",
+                            contentDescription = LakuStrings.get("upload_product_photo", lang),
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -266,7 +266,7 @@ fun AddEditProductScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.AddPhotoAlternate,
-                                contentDescription = "Ganti Foto",
+                                contentDescription = LakuStrings.get("upload_product_photo", lang),
                                 tint = Color.White,
                                 modifier = Modifier.padding(8.dp).size(20.dp)
                             )
@@ -278,19 +278,19 @@ fun AddEditProductScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.AddPhotoAlternate,
-                                contentDescription = "Upload Foto Produk",
+                                contentDescription = LakuStrings.get("upload_product_photo", lang),
                                 tint = EmeraldGreenPrimary,
                                 modifier = Modifier.size(48.dp)
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Upload Foto Produk",
+                                text = LakuStrings.get("upload_product_photo", lang),
                                 fontWeight = FontWeight.SemiBold,
                                 color = EmeraldGreenDark,
                                 fontSize = 14.sp
                             )
                             Text(
-                                text = "Ketuk untuk memilih foto dari galeri",
+                                text = LakuStrings.get("tap_choose_gallery", lang),
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -304,7 +304,7 @@ fun AddEditProductScreen(
                 value = name,
                 onValueChange = { name = it; errorMessage = null },
                 label = { Text(LakuStrings.get("product_name", lang)) },
-                placeholder = { Text("Contoh: Beras Ramos 5kg, Kopi Susu") },
+                placeholder = { Text(LakuStrings.get("product_name_placeholder", lang)) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("product_name_input"),
@@ -324,7 +324,7 @@ fun AddEditProductScreen(
                     modifier = Modifier.weight(1.3f)
                 ) {
                     OutlinedTextField(
-                        value = category,
+                        value = LakuStrings.translateCategory(category, lang),
                         onValueChange = {},
                         readOnly = true,
                         label = { Text(LakuStrings.get("category", lang)) },
@@ -341,7 +341,7 @@ fun AddEditProductScreen(
                     ) {
                         Categories.ALL_CATEGORIES.forEach { cat ->
                             DropdownMenuItem(
-                                text = { Text(cat, fontWeight = if (cat == category) FontWeight.Bold else FontWeight.Normal) },
+                                text = { Text(LakuStrings.translateCategory(cat, lang), fontWeight = if (cat == category) FontWeight.Bold else FontWeight.Normal) },
                                 onClick = {
                                     category = cat
                                     categoryDropdownExpanded = false
@@ -358,7 +358,7 @@ fun AddEditProductScreen(
                     modifier = Modifier.weight(0.9f)
                 ) {
                     OutlinedTextField(
-                        value = unit,
+                        value = LakuStrings.translateUnit(unit, lang),
                         onValueChange = {},
                         readOnly = true,
                         label = { Text(LakuStrings.get("unit", lang)) },
@@ -375,7 +375,7 @@ fun AddEditProductScreen(
                     ) {
                         Categories.ALL_UNITS.forEach { u ->
                             DropdownMenuItem(
-                                text = { Text(u, fontWeight = if (u == unit) FontWeight.Bold else FontWeight.Normal) },
+                                text = { Text(LakuStrings.translateUnit(u, lang), fontWeight = if (u == unit) FontWeight.Bold else FontWeight.Normal) },
                                 onClick = {
                                     unit = u
                                     unitDropdownExpanded = false
@@ -416,7 +416,7 @@ fun AddEditProductScreen(
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Default.QrCodeScanner,
-                            contentDescription = "Scan Barcode Kamera",
+                            contentDescription = LakuStrings.get("scan_barcode_title", lang),
                             tint = Color.White,
                             modifier = Modifier.size(24.dp)
                         )
@@ -435,7 +435,7 @@ fun AddEditProductScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.AutoAwesome,
-                        contentDescription = "Buat Barcode Otomatis",
+                        contentDescription = LakuStrings.get("generate_barcode", lang),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(22.dp)
                     )
@@ -497,7 +497,7 @@ fun AddEditProductScreen(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Ganti Negara",
+                                text = LakuStrings.get("change_country", lang),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
@@ -541,7 +541,7 @@ fun AddEditProductScreen(
                                     FormatUtils.currentCurrencyCode = code
                                     onCurrencyChanged?.invoke(code)
                                     val curr = CurrencyCatalog.getCurrency(code)
-                                    Toast.makeText(context, "Mata uang diubah ke ${curr.name} (${curr.symbol})", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "${LakuStrings.get("currency_changed_toast", lang)} ${curr.name} (${curr.symbol})", Toast.LENGTH_SHORT).show()
                                 },
                                 label = { Text(label, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
                                 colors = FilterChipDefaults.filterChipColors(
@@ -594,28 +594,56 @@ fun AddEditProductScreen(
             val profitPercent = if (costVal > 0.0) ((profitVal / costVal) * 100.0) else 0.0
 
             if (sellVal > 0.0 || costVal > 0.0) {
+                val isProfit = profitVal >= 0
+                val accentColor = if (isProfit) EmeraldGreenDark else Color(0xFFDC2626)
+                val badgeBg = if (isProfit) EmeraldGreenPrimary.copy(alpha = 0.16f) else Color(0xFFDC2626).copy(alpha = 0.15f)
                 Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = if (profitVal >= 0) EmeraldGreenPrimary.copy(alpha = 0.1f) else Color.Red.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (isProfit) EmeraldGreenPrimary.copy(alpha = 0.1f) else Color(0xFFDC2626).copy(alpha = 0.08f),
+                    border = BorderStroke(1.dp, (if (isProfit) EmeraldGreenPrimary else Color(0xFFDC2626)).copy(alpha = 0.25f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = if (profitVal >= 0) "Estimasi Keuntungan / Margin:" else "Peringatan Rugi:",
+                            text = (if (isProfit) LakuStrings.get("est_profit_margin", lang) else LakuStrings.get("loss_warning", lang)).trimEnd(':'),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (profitVal >= 0) EmeraldGreenDark else Color.Red
+                            color = accentColor,
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(end = 10.dp)
                         )
-                        Text(
-                            text = "${FormatUtils.formatCurrency(profitVal)} (${String.format(java.util.Locale.US, "%.1f", profitPercent)}%)",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (profitVal >= 0) EmeraldGreenDark else Color.Red
-                        )
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                text = FormatUtils.formatCurrency(profitVal),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = accentColor,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = badgeBg
+                            ) {
+                                Text(
+                                    text = "${if (isProfit) "+" else ""}${String.format(java.util.Locale.US, "%.1f", profitPercent)}%",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = accentColor,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -631,14 +659,14 @@ fun AddEditProductScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                             Text(
                                 text = LakuStrings.get("stock_unlimited", lang),
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 14.sp
                             )
                             Text(
-                                text = "Aktifkan jika stok tidak terbatas (misal: jasa/masakan)",
+                                text = LakuStrings.get("stock_unlimited_desc", lang),
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -697,7 +725,7 @@ fun AddEditProductScreen(
                 Column(modifier = Modifier.padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "Informasi Supplier / Distributor",
+                            text = LakuStrings.get("supplier_info_title", lang),
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.primary
@@ -710,7 +738,7 @@ fun AddEditProductScreen(
                         value = supplierName,
                         onValueChange = { supplierName = it },
                         label = { Text(LakuStrings.get("supplier_name", lang)) },
-                        placeholder = { Text("Nama agen / distributor") },
+                        placeholder = { Text(LakuStrings.get("supplier_name_placeholder", lang)) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("supplier_name_input"),
@@ -724,7 +752,7 @@ fun AddEditProductScreen(
                         value = supplierPhone,
                         onValueChange = { supplierPhone = it },
                         label = { Text(LakuStrings.get("supplier_phone", lang)) },
-                        placeholder = { Text("Contoh: 081234567890") },
+                        placeholder = { Text(LakuStrings.get("whatsapp_no_placeholder", lang)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                         trailingIcon = {
                             if (supplierPhone.isNotBlank()) {
@@ -737,7 +765,7 @@ fun AddEditProductScreen(
                                 }) {
                                     Icon(
                                         imageVector = Icons.Default.Call,
-                                        contentDescription = "Hubungi WhatsApp",
+                                        contentDescription = "WhatsApp",
                                         tint = EmeraldGreenPrimary
                                     )
                                 }
@@ -776,7 +804,7 @@ fun AddEditProductScreen(
                 Icon(imageVector = Icons.Default.Check, contentDescription = null, tint = Color.White)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (isEdit) "Simpan Perubahan" else "Tambah ke Katalog",
+                    text = if (isEdit) LakuStrings.get("save_changes", lang) else LakuStrings.get("add_to_catalog", lang),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
@@ -790,11 +818,12 @@ fun AddEditProductScreen(
     if (showCurrencyDialog) {
         CurrencySelectionDialog(
             activeCode = FormatUtils.currentCurrencyCode,
+            lang = lang,
             onSelect = { curr ->
                 FormatUtils.currentCurrencyCode = curr.code
                 onCurrencyChanged?.invoke(curr.code)
                 showCurrencyDialog = false
-                Toast.makeText(context, "Mata uang diubah ke ${curr.name} (${curr.symbol})", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "${LakuStrings.get("currency_changed_toast", lang)} ${curr.name} (${curr.symbol})", Toast.LENGTH_SHORT).show()
             },
             onDismiss = { showCurrencyDialog = false }
         )
@@ -802,11 +831,12 @@ fun AddEditProductScreen(
 
     if (showBarcodeScanner) {
         BarcodeScannerDialog(
+            lang = lang,
             onDismiss = { showBarcodeScanner = false },
             onBarcodeScanned = { scannedCode ->
                 barcode = scannedCode.trim()
                 showBarcodeScanner = false
-                Toast.makeText(context, "Barcode discan: $scannedCode", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "${LakuStrings.get("barcode_scanned_toast", lang)} $scannedCode", Toast.LENGTH_SHORT).show()
             }
         )
     }

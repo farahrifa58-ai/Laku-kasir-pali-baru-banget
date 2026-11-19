@@ -63,6 +63,7 @@ import com.example.ui.LakuKasirViewModel
 import com.example.ui.Screen
 import com.example.ui.components.AppBottomBar
 import com.example.ui.components.AppTopBar
+import com.example.ui.components.CompactSearchBar
 import com.example.ui.theme.DangerRed
 import com.example.ui.theme.EmeraldGreenDark
 import com.example.ui.theme.EmeraldGreenPrimary
@@ -126,22 +127,12 @@ fun HistoryScreen(
                 .padding(horizontal = 14.dp, vertical = 8.dp)
         ) {
             // Search Bar
-            OutlinedTextField(
+            CompactSearchBar(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text(LakuStrings.get("search_history", lang), fontSize = 14.sp) },
-                leadingIcon = {
-                    Icon(imageVector = Icons.Default.Search, contentDescription = "Cari", tint = MaterialTheme.colorScheme.primary)
-                },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }) {
-                            Icon(imageVector = Icons.Default.Clear, contentDescription = "Hapus")
-                        }
-                    }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(14.dp),
+                placeholder = LakuStrings.get("search_history", lang),
+                searchContentDescription = LakuStrings.get("search", lang),
+                clearContentDescription = LakuStrings.get("clear", lang),
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -214,13 +205,13 @@ fun HistoryScreen(
                             )
                             Spacer(modifier = Modifier.height(14.dp))
                             Text(
-                                text = "Belum Ada Transaksi",
+                                text = LakuStrings.get("no_transactions_title", lang),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = "Lakukan pemesanan pertama Anda di menu Kasir untuk melihat riwayat struk dan penjualan.",
+                                text = LakuStrings.get("no_transactions_desc", lang),
                                 fontSize = 13.sp,
                                 textAlign = TextAlign.Center,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -231,7 +222,7 @@ fun HistoryScreen(
                                 colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
-                                Text("Buka Menu Kasir", fontWeight = FontWeight.Bold, color = Color.White)
+                                Text(LakuStrings.get("open_cashier_menu", lang), fontWeight = FontWeight.Bold, color = Color.White)
                             }
                         }
                     }
@@ -241,7 +232,7 @@ fun HistoryScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Tidak ditemukan transaksi untuk kriteria pencarian ini.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(LakuStrings.get("no_matching_transactions", lang), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
                 LazyColumn(
@@ -270,7 +261,7 @@ fun HistoryScreen(
                                             fontSize = 14.sp
                                         )
                                         Text(
-                                            text = FormatUtils.formatDateTime(tx.timestamp),
+                                            text = FormatUtils.formatDateTime(tx.timestamp, lang),
                                             fontSize = 11.sp,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -282,7 +273,7 @@ fun HistoryScreen(
                                         color = if (tx.isPaid) StatusPaid.copy(alpha = 0.12f) else StatusDebt.copy(alpha = 0.12f)
                                     ) {
                                         Text(
-                                            text = if (tx.isPaid) "LUNAS" else "KASBON",
+                                            text = if (tx.isPaid) LakuStrings.get("paid_badge", lang) else LakuStrings.get("debt_badge", lang),
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 11.sp,
                                             color = if (tx.isPaid) StatusPaid else StatusDebt,
@@ -304,7 +295,7 @@ fun HistoryScreen(
 
                                 if (tx.customerName.isNotBlank() || tx.customerPhone.isNotBlank()) {
                                     Text(
-                                        text = "Pelanggan: ${tx.customerName.ifBlank { "-" }} • ${tx.customerPhone.ifBlank { "" }}",
+                                        text = "${LakuStrings.get("customer_prefix", lang)} ${tx.customerName.ifBlank { "-" }}${if (tx.customerPhone.isNotBlank()) " • ${tx.customerPhone}" else ""}",
                                         fontSize = 11.sp,
                                         color = MaterialTheme.colorScheme.primary,
                                         fontWeight = FontWeight.SemiBold
@@ -322,7 +313,7 @@ fun HistoryScreen(
                                 ) {
                                     Column {
                                         Text(
-                                            text = "Metode: ${tx.paymentMethod}",
+                                            text = "${LakuStrings.get("method_prefix", lang)} ${LakuStrings.translatePaymentMethod(tx.paymentMethod, lang)}",
                                             fontSize = 11.sp,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -346,7 +337,7 @@ fun HistoryScreen(
                                             ) {
                                                 Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
                                                 Spacer(modifier = Modifier.width(4.dp))
-                                                Text("Lunasi", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                                Text(LakuStrings.get("mark_paid_btn", lang), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                             }
                                             Spacer(modifier = Modifier.width(8.dp))
                                         }
@@ -372,7 +363,7 @@ fun HistoryScreen(
                                             onClick = { onSelectTransaction(tx) },
                                             modifier = Modifier.size(32.dp)
                                         ) {
-                                            Icon(imageVector = Icons.Default.ReceiptLong, contentDescription = "Lihat Struk", tint = EmeraldGreenPrimary)
+                                            Icon(imageVector = Icons.Default.ReceiptLong, contentDescription = LakuStrings.get("view_receipt", lang), tint = EmeraldGreenPrimary)
                                         }
 
                                         // Delete transaction
@@ -380,7 +371,7 @@ fun HistoryScreen(
                                             onClick = { transactionToDelete = tx },
                                             modifier = Modifier.size(32.dp)
                                         ) {
-                                            Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = "Hapus", tint = DangerRed)
+                                            Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = LakuStrings.get("delete", lang), tint = DangerRed)
                                         }
                                     }
                                 }
@@ -397,8 +388,8 @@ fun HistoryScreen(
         val tx = transactionToDelete!!
         AlertDialog(
             onDismissRequest = { transactionToDelete = null },
-            title = { Text("Hapus Transaksi?", fontWeight = FontWeight.Bold) },
-            text = { Text("Apakah Anda yakin ingin menghapus transaksi ${tx.transactionCode}?") },
+            title = { Text(LakuStrings.get("delete_tx_title", lang), fontWeight = FontWeight.Bold) },
+            text = { Text("${LakuStrings.get("delete_tx_confirm", lang)} ${tx.transactionCode}?") },
             confirmButton = {
                 Button(
                     onClick = {
@@ -407,12 +398,12 @@ fun HistoryScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = DangerRed)
                 ) {
-                    Text("Hapus", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(LakuStrings.get("delete", lang), color = Color.White, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { transactionToDelete = null }) {
-                    Text("Batal")
+                    Text(LakuStrings.get("cancel", lang))
                 }
             }
         )

@@ -1,8 +1,12 @@
 package com.example.util
 
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.example.data.local.AppDatabase
@@ -18,6 +22,7 @@ import java.io.BufferedReader
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStreamReader
+import java.io.OutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -43,9 +48,26 @@ object BackupRestoreHelper {
                 put("ownerName", storeProfile.ownerName)
                 put("address", storeProfile.address)
                 put("phone", storeProfile.phone)
+                put("operatingHours", storeProfile.operatingHours)
                 put("receiptNotes", storeProfile.receiptNotes)
+                put("storeIconKey", storeProfile.storeIconKey)
+                put("storeIconBgColor", storeProfile.storeIconBgColor)
+                put("showStoreNameOnReceipt", storeProfile.showStoreNameOnReceipt)
+                put("showStoreLogoOnReceipt", storeProfile.showStoreLogoOnReceipt)
+                put("showCashierNameOnReceipt", storeProfile.showCashierNameOnReceipt)
+                put("showStoreAddressOnReceipt", storeProfile.showStoreAddressOnReceipt)
+                put("showStorePhoneOnReceipt", storeProfile.showStorePhoneOnReceipt)
+                put("showCustomerNameOnReceipt", storeProfile.showCustomerNameOnReceipt)
+                put("showOperatingHoursOnReceipt", storeProfile.showOperatingHoursOnReceipt)
+                put("receiptPrefix", storeProfile.receiptPrefix)
+                put("ppnMode", storeProfile.ppnMode)
+                put("defaultPpnRate", storeProfile.defaultPpnRate)
+                put("discountMode", storeProfile.discountMode)
+                put("defaultDiscountValue", storeProfile.defaultDiscountValue)
+                put("paperSize", storeProfile.paperSize)
                 put("themeMode", storeProfile.themeMode)
                 put("language", storeProfile.language)
+                put("currencyCode", storeProfile.currencyCode)
             }
             root.put("storeProfile", profileObj)
 
@@ -114,15 +136,59 @@ object BackupRestoreHelper {
             val cacheDir = File(context.cacheDir, "receipts").apply { mkdirs() }
             val backupFile = File(cacheDir, filename)
 
-            val fos = FileOutputStream(backupFile)
-            fos.write(root.toString(2).toByteArray(Charsets.UTF_8))
-            fos.flush()
-            fos.close()
+            FileOutputStream(backupFile).use { fos ->
+                fos.write(root.toString(2).toByteArray(Charsets.UTF_8))
+                fos.flush()
+            }
 
             backupFile
         } catch (e: Exception) {
             e.printStackTrace()
             null
+        }
+    }
+
+    /**
+     * Saves the backup JSON file directly into the device's Downloads/LakuKasir folder.
+     */
+    suspend fun saveBackupToDevice(
+        context: Context,
+        backupFile: File
+    ): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val bytes = backupFile.readBytes()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val resolver = context.contentResolver
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, backupFile.name)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "application/json")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/LakuKasir")
+                }
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                if (uri != null) {
+                    val out: OutputStream? = resolver.openOutputStream(uri)
+                    if (out != null) {
+                        out.use {
+                            it.write(bytes)
+                            it.flush()
+                        }
+                        return@withContext true
+                    }
+                }
+                false
+            } else {
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val folder = File(downloadsDir, "LakuKasir").apply { mkdirs() }
+                val dest = File(folder, backupFile.name)
+                FileOutputStream(dest).use { fos ->
+                    fos.write(bytes)
+                    fos.flush()
+                }
+                true
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
         }
     }
 
@@ -139,14 +205,13 @@ object BackupRestoreHelper {
                 putExtra(Intent.EXTRA_STREAM, uri)
                 putExtra(
                     Intent.EXTRA_TEXT,
-                    "📦 File Cadangan Data Toko Laku Kasir Pro (${backupFile.name}). Simpan file ini untuk memulihkan data penjualan Anda."
+                    "Laku Kasir Pro Backup (${backupFile.name})"
                 )
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 setPackage("com.whatsapp")
             }
             context.startActivity(intent)
         } catch (e: Exception) {
-            // Fallback WhatsApp Business or chooser
             try {
                 val uri: Uri = FileProvider.getUriForFile(
                     context,
@@ -158,14 +223,14 @@ object BackupRestoreHelper {
                     putExtra(Intent.EXTRA_STREAM, uri)
                     putExtra(
                         Intent.EXTRA_TEXT,
-                        "📦 File Cadangan Data Toko Laku Kasir Pro (${backupFile.name})"
+                        "Laku Kasir Pro Backup (${backupFile.name})"
                     )
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     setPackage("com.whatsapp.w4b")
                 }
                 context.startActivity(intent)
             } catch (ex: Exception) {
-                shareBackupUniversal(context, backupFile, "Kirim Cadangan via WhatsApp")
+                shareBackupUniversal(context, backupFile, "WhatsApp Backup")
             }
         }
     }
@@ -181,13 +246,13 @@ object BackupRestoreHelper {
             val intent = Intent(Intent.ACTION_SEND).apply {
                 type = "application/json"
                 putExtra(Intent.EXTRA_STREAM, uri)
-                putExtra(Intent.EXTRA_SUBJECT, "Cadangan Laku Kasir Pro")
+                putExtra(Intent.EXTRA_SUBJECT, "Laku Kasir Pro Backup")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 setPackage("com.google.android.apps.docs")
             }
             context.startActivity(intent)
         } catch (e: Exception) {
-            shareBackupUniversal(context, backupFile, "Simpan ke Google Drive / Cloud")
+            shareBackupUniversal(context, backupFile, "Google Drive / Cloud Backup")
         }
     }
 
@@ -206,19 +271,21 @@ object BackupRestoreHelper {
             }
             context.startActivity(Intent.createChooser(intent, title))
         } catch (e: Exception) {
-            Toast.makeText(context, "Gagal membagikan cadangan data", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, LakuStrings.get("backup_failed_toast", FormatUtils.currentLanguageCode), Toast.LENGTH_SHORT).show()
         }
     }
 
     suspend fun restoreBackupFromJsonUri(
         context: Context,
         uri: Uri,
+        currentProfile: StoreProfile? = null,
+        onProfileRestored: ((StoreProfile) -> Unit)? = null,
         onSuccess: (productsCount: Int, transactionsCount: Int) -> Unit,
         onError: (String) -> Unit
     ) = withContext(Dispatchers.IO) {
         try {
             val inputStream = context.contentResolver.openInputStream(uri)
-                ?: throw Exception("Tidak dapat membaca file cadangan")
+                ?: throw Exception("Cannot read backup file")
             val reader = BufferedReader(InputStreamReader(inputStream))
             val sb = java.lang.StringBuilder()
             var line: String?
@@ -230,6 +297,40 @@ object BackupRestoreHelper {
 
             val root = JSONObject(sb.toString())
             val db = AppDatabase.getDatabase(context)
+
+            // Restore Store Profile if available
+            val profileObj = root.optJSONObject("storeProfile")
+            if (profileObj != null && currentProfile != null && onProfileRestored != null) {
+                val restoredProfile = currentProfile.copy(
+                    storeName = profileObj.optString("storeName", currentProfile.storeName),
+                    ownerName = profileObj.optString("ownerName", currentProfile.ownerName),
+                    address = profileObj.optString("address", currentProfile.address),
+                    phone = profileObj.optString("phone", currentProfile.phone),
+                    operatingHours = profileObj.optString("operatingHours", currentProfile.operatingHours),
+                    receiptNotes = profileObj.optString("receiptNotes", currentProfile.receiptNotes),
+                    storeIconKey = profileObj.optString("storeIconKey", currentProfile.storeIconKey),
+                    storeIconBgColor = profileObj.optLong("storeIconBgColor", currentProfile.storeIconBgColor),
+                    showStoreNameOnReceipt = profileObj.optBoolean("showStoreNameOnReceipt", currentProfile.showStoreNameOnReceipt),
+                    showStoreLogoOnReceipt = profileObj.optBoolean("showStoreLogoOnReceipt", currentProfile.showStoreLogoOnReceipt),
+                    showCashierNameOnReceipt = profileObj.optBoolean("showCashierNameOnReceipt", currentProfile.showCashierNameOnReceipt),
+                    showStoreAddressOnReceipt = profileObj.optBoolean("showStoreAddressOnReceipt", currentProfile.showStoreAddressOnReceipt),
+                    showStorePhoneOnReceipt = profileObj.optBoolean("showStorePhoneOnReceipt", currentProfile.showStorePhoneOnReceipt),
+                    showCustomerNameOnReceipt = profileObj.optBoolean("showCustomerNameOnReceipt", currentProfile.showCustomerNameOnReceipt),
+                    showOperatingHoursOnReceipt = profileObj.optBoolean("showOperatingHoursOnReceipt", currentProfile.showOperatingHoursOnReceipt),
+                    receiptPrefix = profileObj.optString("receiptPrefix", currentProfile.receiptPrefix),
+                    ppnMode = profileObj.optString("ppnMode", currentProfile.ppnMode),
+                    defaultPpnRate = profileObj.optDouble("defaultPpnRate", currentProfile.defaultPpnRate),
+                    discountMode = profileObj.optString("discountMode", currentProfile.discountMode),
+                    defaultDiscountValue = profileObj.optDouble("defaultDiscountValue", currentProfile.defaultDiscountValue),
+                    paperSize = profileObj.optString("paperSize", currentProfile.paperSize),
+                    themeMode = profileObj.optString("themeMode", currentProfile.themeMode),
+                    language = profileObj.optString("language", currentProfile.language),
+                    currencyCode = profileObj.optString("currencyCode", currentProfile.currencyCode)
+                )
+                withContext(Dispatchers.Main) {
+                    onProfileRestored(restoredProfile)
+                }
+            }
 
             // Restore products
             val prodArr = root.optJSONArray("products") ?: JSONArray()
@@ -276,13 +377,28 @@ object BackupRestoreHelper {
                 db.transactionDao().insert(transaction)
             }
 
+            // Restore expenses
+            val expArr = root.optJSONArray("expenses") ?: JSONArray()
+            for (i in 0 until expArr.length()) {
+                val e = expArr.getJSONObject(i)
+                val expense = Expense(
+                    id = e.optLong("id", 0L),
+                    title = e.optString("title", "Expense"),
+                    category = e.optString("category", "Lainnya"),
+                    amount = e.optDouble("amount", 0.0),
+                    timestamp = e.optLong("timestamp", System.currentTimeMillis()),
+                    note = e.optString("note", "")
+                )
+                db.expenseDao().insert(expense)
+            }
+
             withContext(Dispatchers.Main) {
                 onSuccess(prodArr.length(), txArr.length())
             }
         } catch (e: Exception) {
             e.printStackTrace()
             withContext(Dispatchers.Main) {
-                onError("Gagal memulihkan file cadangan: ${e.message}")
+                onError("Restore error: ${e.message}")
             }
         }
     }

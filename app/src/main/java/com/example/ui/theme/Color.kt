@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 
 // Emerald Green POS Brand Colors
 val EmeraldGreenPrimary = Color(0xFF16A34A)
+val PrimaryGreen = EmeraldGreenPrimary
 val EmeraldGreenDark = Color(0xFF15803D)
 val EmeraldGreenLight = Color(0xFF22C55E)
 val EmeraldGreenContainer = Color(0xFFDCFCE7)

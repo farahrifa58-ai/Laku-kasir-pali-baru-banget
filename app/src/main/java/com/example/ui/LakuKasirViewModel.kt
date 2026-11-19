@@ -53,37 +53,13 @@ class LakuKasirViewModel(application: Application) : AndroidViewModel(applicatio
     private val expenseDao = db.expenseDao()
     private val prefsManager = PreferencesManager(application)
 
-    init {
-        com.example.util.LicenseManager.init(application)
-    }
+    val storeProfile: StateFlow<StoreProfile> = prefsManager.storeProfile
 
     val isProLicense: StateFlow<Boolean> = com.example.util.LicenseManager.isProFlow
 
     // Trial Limit & Activation Dialog States
     val trialLimitDialogMessage = MutableStateFlow<String?>(null)
     val showActivationDialog = MutableStateFlow(false)
-
-    fun openActivationDialog() {
-        showActivationDialog.value = true
-    }
-
-    fun closeActivationDialog() {
-        showActivationDialog.value = false
-    }
-
-    fun clearTrialLimitDialog() {
-        trialLimitDialogMessage.value = null
-    }
-
-    fun activateLicense(key: String): Boolean {
-        return com.example.util.LicenseManager.activateWithKey(key)
-    }
-
-    fun resetToTrial() {
-        com.example.util.LicenseManager.resetToTrial()
-    }
-
-    val storeProfile: StateFlow<StoreProfile> = prefsManager.storeProfile
 
     // Navigation state
     private val _currentScreen = MutableStateFlow(Screen.SPLASH)
@@ -131,9 +107,10 @@ class LakuKasirViewModel(application: Application) : AndroidViewModel(applicatio
     // Checkout Details
     val customerName = MutableStateFlow("")
     val customerPhone = MutableStateFlow("")
-    val manualDiscount = MutableStateFlow("")
-    val isPpnAuto = MutableStateFlow(false)
-    val ppnRate = MutableStateFlow(11.0)
+    val discountMode = MutableStateFlow(storeProfile.value.discountMode) // "manual" or "percent"
+    val manualDiscount = MutableStateFlow(formatDefaultDiscount(storeProfile.value))
+    val isPpnAuto = MutableStateFlow(storeProfile.value.ppnMode == "auto")
+    val ppnRate = MutableStateFlow(storeProfile.value.defaultPpnRate)
     val manualPpnAmount = MutableStateFlow("")
     val selectedPaymentMethod = MutableStateFlow("Tunai")
     val cashReceivedInput = MutableStateFlow("")
@@ -146,6 +123,43 @@ class LakuKasirViewModel(application: Application) : AndroidViewModel(applicatio
 
     // Period filter for Dashboard: "today", "week", "month", "all"
     val dashboardPeriod = MutableStateFlow("today")
+
+    init {
+        com.example.util.LicenseManager.init(application)
+    }
+
+    private fun formatDefaultDiscount(profile: StoreProfile): String {
+        if (profile.defaultDiscountValue <= 0.0) return ""
+        return if (profile.discountMode == "percent") {
+            if (profile.defaultDiscountValue % 1.0 == 0.0) {
+                profile.defaultDiscountValue.toInt().toString()
+            } else {
+                profile.defaultDiscountValue.toString()
+            }
+        } else {
+            FormatUtils.formatNumberWithDots(profile.defaultDiscountValue)
+        }
+    }
+
+    fun openActivationDialog() {
+        showActivationDialog.value = true
+    }
+
+    fun closeActivationDialog() {
+        showActivationDialog.value = false
+    }
+
+    fun clearTrialLimitDialog() {
+        trialLimitDialogMessage.value = null
+    }
+
+    fun activateLicense(key: String): Boolean {
+        return com.example.util.LicenseManager.activateWithKey(key)
+    }
+
+    fun resetToTrial() {
+        com.example.util.LicenseManager.resetToTrial()
+    }
 
     fun navigateTo(screen: Screen) {
         _currentScreen.value = screen
@@ -188,12 +202,15 @@ class LakuKasirViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun clearCart() {
+        val profile = storeProfile.value
         _cart.value = emptyList()
         customerName.value = ""
         customerPhone.value = ""
-        manualDiscount.value = ""
+        discountMode.value = profile.discountMode
+        manualDiscount.value = formatDefaultDiscount(profile)
         manualPpnAmount.value = ""
-        isPpnAuto.value = false
+        isPpnAuto.value = profile.ppnMode == "auto"
+        ppnRate.value = profile.defaultPpnRate
         cashReceivedInput.value = ""
         selectedPaymentMethod.value = "Tunai"
     }
@@ -202,8 +219,18 @@ class LakuKasirViewModel(application: Application) : AndroidViewModel(applicatio
     val cartSubtotal: Double
         get() = _cart.value.sumOf { it.subtotal }
 
+    fun calculateDiscountAmount(subtotal: Double, mode: String, input: String): Double {
+        if (input.isBlank()) return 0.0
+        return if (mode == "percent") {
+            val pct = input.replace(",", ".").toDoubleOrNull()?.coerceIn(0.0, 100.0) ?: 0.0
+            subtotal * (pct / 100.0)
+        } else {
+            FormatUtils.parseNumberFromDotted(input).coerceAtMost(subtotal)
+        }
+    }
+
     val discountAmount: Double
-        get() = FormatUtils.parseNumberFromDotted(manualDiscount.value)
+        get() = calculateDiscountAmount(cartSubtotal, discountMode.value, manualDiscount.value)
 
     val calculatedPpnAmount: Double
         get() = when {
@@ -241,7 +268,6 @@ class LakuKasirViewModel(application: Application) : AndroidViewModel(applicatio
     fun processCheckout(onSuccess: (Transaction) -> Unit) {
         val items = _cart.value
         if (items.isEmpty()) return
-        // Periksa batas transaksi untuk versi Trial
         if (!com.example.util.LicenseManager.isProActivated()) {
             val currentTxCount = allTransactions.value.size
             if (currentTxCount >= com.example.util.LicenseManager.MAX_TRIAL_TRANSACTIONS) {
@@ -252,9 +278,10 @@ class LakuKasirViewModel(application: Application) : AndroidViewModel(applicatio
         }
 
         val now = System.currentTimeMillis()
+        val prefix = storeProfile.value.receiptPrefix.trim().ifBlank { "LK" }.uppercase()
         val codePrefix = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date(now))
         val randomSuffix = (100..999).random()
-        val code = "LK-$codePrefix-$randomSuffix"
+        val code = "$prefix-$codePrefix-$randomSuffix"
 
         val transactionItems = items.map {
             TransactionItem(
@@ -283,12 +310,18 @@ class LakuKasirViewModel(application: Application) : AndroidViewModel(applicatio
 
         val isPaid = selectedPaymentMethod.value != "Kasbon"
 
+        val discountNoteText = when {
+            discountAmount <= 0.0 -> ""
+            discountMode.value == "percent" -> "Diskon ${manualDiscount.value}%"
+            else -> "Diskon Langsung"
+        }
+
         val transaction = Transaction(
             transactionCode = code,
             timestamp = now,
             subtotal = cartSubtotal,
             discount = discountAmount,
-            discountNote = if (discountAmount > 0) "Diskon Langsung" else "",
+            discountNote = discountNoteText,
             ppnRate = if (isPpnAuto.value) ppnRate.value else 0.0,
             ppnAmount = calculatedPpnAmount,
             total = totalPayable,
@@ -302,11 +335,9 @@ class LakuKasirViewModel(application: Application) : AndroidViewModel(applicatio
         )
 
         viewModelScope.launch {
-            // Save transaction
             val id = transactionDao.insert(transaction)
             val savedTx = transaction.copy(id = id)
 
-            // Deduct stock for products with finite stock
             items.forEach { item ->
                 if (!item.product.isUnlimitedStock) {
                     val updatedStock = maxOf(0.0, item.product.stock - item.quantity)
@@ -314,10 +345,8 @@ class LakuKasirViewModel(application: Application) : AndroidViewModel(applicatio
                 }
             }
 
-            // Clear cart
             clearCart()
 
-            // Open Receipt
             activeReceiptTransaction.value = savedTx
             _currentScreen.value = Screen.RECEIPT_VIEW
             onSuccess(savedTx)
@@ -339,7 +368,7 @@ class LakuKasirViewModel(application: Application) : AndroidViewModel(applicatio
         supplierName: String,
         supplierPhone: String,
         imageUri: String?
-    ) {        // Periksa batas penambahan produk untuk versi Trial (hanya saat tambah produk baru id == 0L)
+    ) {
         if (id == 0L && !com.example.util.LicenseManager.isProActivated()) {
             val currentProductCount = allProducts.value.size
             if (currentProductCount >= com.example.util.LicenseManager.MAX_TRIAL_PRODUCTS) {
@@ -375,14 +404,11 @@ class LakuKasirViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    /**
-     * Memuat 2 produk contoh/demo agar calon pembeli bisa langsung mencoba kasir
-     */
     fun loadDemoSampleProducts() {
         viewModelScope.launch {
             val sampleItems = listOf(
-                Product(name = "Kopi Susu Gula Aren", category = "Minuman", unit = "Cup", barcode = "DEMO-01", costPrice = 8000.0, sellingPrice = 18000.0, stock = 50.0, isUnlimitedStock = false, minStockAlert = 5.0, supplierName = "Kopi Nusantara", supplierPhone = "081234567890"),
-                Product(name = "Roti Bakar Cokelat Keju", category = "Makanan", unit = "Porsi", barcode = "DEMO-02", costPrice = 10000.0, sellingPrice = 22000.0, stock = 30.0, isUnlimitedStock = false, minStockAlert = 5.0, supplierName = "Bakery Indo", supplierPhone = "081234567890")
+                Product(name = "Kopi Susu Gula Aren", category = "Makanan & Minuman", unit = "pcs", barcode = "DEMO-01", costPrice = 8000.0, sellingPrice = 18000.0, stock = 50.0, isUnlimitedStock = false, minStockAlert = 5.0, supplierName = "Kopi Nusantara", supplierPhone = "081234567890"),
+                Product(name = "Roti Bakar Cokelat Keju", category = "Makanan & Minuman", unit = "pcs", barcode = "DEMO-02", costPrice = 10000.0, sellingPrice = 22000.0, stock = 30.0, isUnlimitedStock = false, minStockAlert = 5.0, supplierName = "Bakery Indo", supplierPhone = "081234567890")
             )
             sampleItems.forEach { productDao.insert(it) }
         }
@@ -457,7 +483,17 @@ class LakuKasirViewModel(application: Application) : AndroidViewModel(applicatio
 
     // Settings
     fun updateStoreProfile(profile: StoreProfile) {
+        val old = storeProfile.value
         prefsManager.saveStoreProfile(profile)
+        // Sync active checkout defaults when tax/discount settings change
+        if (old.ppnMode != profile.ppnMode || old.defaultPpnRate != profile.defaultPpnRate) {
+            isPpnAuto.value = profile.ppnMode == "auto"
+            ppnRate.value = profile.defaultPpnRate
+        }
+        if (old.discountMode != profile.discountMode || old.defaultDiscountValue != profile.defaultDiscountValue) {
+            discountMode.value = profile.discountMode
+            manualDiscount.value = formatDefaultDiscount(profile)
+        }
     }
 
     fun setThemeMode(mode: String) {
@@ -470,5 +506,9 @@ class LakuKasirViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun setCurrency(code: String) {
         prefsManager.setCurrency(code)
+    }
+
+    fun updateLastBackupTimestamp(timestamp: Long = System.currentTimeMillis()) {
+        prefsManager.updateLastBackupTimestamp(timestamp)
     }
 }

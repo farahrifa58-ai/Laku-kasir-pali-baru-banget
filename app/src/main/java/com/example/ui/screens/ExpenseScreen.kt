@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -75,6 +76,7 @@ import com.example.ui.LakuKasirViewModel
 import com.example.ui.Screen
 import com.example.ui.components.AppBottomBar
 import com.example.ui.components.AppTopBar
+import com.example.ui.components.CompactSearchBar
 import com.example.ui.theme.DangerRed
 import com.example.ui.theme.EmeraldGreenDark
 import com.example.ui.theme.EmeraldGreenPrimary
@@ -172,7 +174,7 @@ fun ExpenseScreen(
                 shape = CircleShape,
                 modifier = Modifier.testTag("add_expense_fab")
             ) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "Tambah Pengeluaran")
+                Icon(imageVector = Icons.Default.Add, contentDescription = LakuStrings.get("add_expense_title", lang))
             }
         }
     ) { innerPadding ->
@@ -185,30 +187,40 @@ fun ExpenseScreen(
         ) {
             // Period selector tabs
             item {
-                Row(
+                val periods = listOf(
+                    "today" to LakuStrings.get("period_today", lang),
+                    "week" to LakuStrings.get("period_week", lang),
+                    "month" to LakuStrings.get("period_month", lang),
+                    "all" to LakuStrings.get("period_all", lang)
+                )
+
+                LazyRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    val periods = listOf(
-                        "today" to (if (lang == "en") "Today" else "Hari Ini"),
-                        "week" to (if (lang == "en") "7 Days" else "7 Hari"),
-                        "month" to (if (lang == "en") "This Month" else "Bulan Ini"),
-                        "all" to (if (lang == "en") "All" else "Semua")
-                    )
-
-                    periods.forEach { (key, label) ->
+                    items(periods) { (key, label) ->
                         val isSelected = selectedPeriod == key
-                        FilterChip(
-                            selected = isSelected,
+                        Surface(
                             onClick = { selectedPeriod = key },
-                            label = { Text(label, fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = EmeraldGreenPrimary,
-                                selectedLabelColor = Color.White
-                            ),
                             shape = RoundedCornerShape(20.dp),
-                            modifier = Modifier.weight(1f)
-                        )
+                            color = if (isSelected) EmeraldGreenPrimary else MaterialTheme.colorScheme.surface,
+                            border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            modifier = Modifier.height(36.dp)
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.padding(horizontal = 14.dp)
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -246,7 +258,7 @@ fun ExpenseScreen(
                                 }
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = if (lang == "en") "Total Expenses" else "Total Pengeluaran",
+                                    text = LakuStrings.get("total_expenses", lang),
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = Color(0xFF991B1B)
@@ -261,7 +273,7 @@ fun ExpenseScreen(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "${filteredExpenses.size} catatan pengeluaran",
+                                text = "${filteredExpenses.size} ${LakuStrings.get("expense_records_count", lang)}",
                                 fontSize = 12.sp,
                                 color = Color(0xFFB91C1C)
                             )
@@ -280,7 +292,7 @@ fun ExpenseScreen(
                             Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = if (lang == "en") "Add" else "Catat",
+                                text = LakuStrings.get("add_short", lang),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
@@ -293,23 +305,15 @@ fun ExpenseScreen(
             // Search and Category Chips
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
+                    CompactSearchBar(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
+                        placeholder = LakuStrings.get("search_expense_placeholder", lang),
+                        searchContentDescription = LakuStrings.get("search", lang),
+                        clearContentDescription = LakuStrings.get("clear", lang),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .testTag("expense_search_input"),
-                        placeholder = { Text("Cari catatan pengeluaran...", fontSize = 13.sp) },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                        trailingIcon = {
-                            if (searchQuery.isNotEmpty()) {
-                                IconButton(onClick = { searchQuery = "" }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Clear", modifier = Modifier.size(18.dp))
-                                }
-                            }
-                        },
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp)
+                            .testTag("expense_search_input")
                     )
 
                     // Category horizontal list
@@ -323,7 +327,7 @@ fun ExpenseScreen(
                             FilterChip(
                                 selected = isSelected,
                                 onClick = { selectedCategoryFilter = cat },
-                                label = { Text(cat, fontSize = 11.sp) },
+                                label = { Text(LakuStrings.translateExpenseCategory(cat, lang), fontSize = 11.sp) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                                     selectedLabelColor = MaterialTheme.colorScheme.primary
@@ -343,12 +347,12 @@ fun ExpenseScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = if (lang == "en") "Expense Records" else "Daftar Pengeluaran",
+                        text = LakuStrings.get("expense_records_title", lang),
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
                     )
                     Text(
-                        text = "${filteredExpenses.size} data",
+                        text = "${filteredExpenses.size} ${LakuStrings.get("data_suffix", lang)}",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -389,13 +393,13 @@ fun ExpenseScreen(
                             }
                             Spacer(modifier = Modifier.height(14.dp))
                             Text(
-                                text = if (lang == "en") "No expenses recorded yet" else "Belum ada catatan pengeluaran",
+                                text = LakuStrings.get("no_expenses_title", lang),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = if (lang == "en") "Tap the button below to record store expenses." else "Catat pengeluaran seperti listrik, sewa tempat, gaji, dan kebutuhan toko lainnya.",
+                                text = LakuStrings.get("no_expenses_desc", lang),
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -411,7 +415,7 @@ fun ExpenseScreen(
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Catat Pengeluaran Pertama")
+                                Text(LakuStrings.get("record_first_expense", lang))
                             }
                         }
                     }
@@ -461,17 +465,13 @@ fun ExpenseScreen(
             onDismissRequest = { expenseToDelete = null },
             title = {
                 Text(
-                    text = if (lang == "en") "Delete Expense?" else "Hapus Catatan Pengeluaran?",
+                    text = LakuStrings.get("delete_expense_title", lang),
                     fontWeight = FontWeight.Bold
                 )
             },
             text = {
                 Text(
-                    text = if (lang == "en") {
-                        "Are you sure you want to delete '${expenseToDelete?.title}' (${FormatUtils.formatRupiah(expenseToDelete?.amount ?: 0.0)})?"
-                    } else {
-                        "Apakah Anda yakin ingin menghapus catatan pengeluaran '${expenseToDelete?.title}' sebesar ${FormatUtils.formatRupiah(expenseToDelete?.amount ?: 0.0)}?"
-                    }
+                    text = "${LakuStrings.get("delete_expense_confirm", lang)} '${expenseToDelete?.title}' (${FormatUtils.formatRupiah(expenseToDelete?.amount ?: 0.0)})"
                 )
             },
             confirmButton = {
@@ -501,8 +501,9 @@ fun ExpenseItemCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val dateFormat = remember { SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()) }
-    val formattedDate = remember(expense.timestamp) { dateFormat.format(Date(expense.timestamp)) }
+    val formattedDate = remember(expense.timestamp, lang) {
+        FormatUtils.formatDateTime(expense.timestamp, lang)
+    }
 
     Card(
         shape = RoundedCornerShape(14.dp),
@@ -550,7 +551,7 @@ fun ExpenseItemCard(
                                 color = MaterialTheme.colorScheme.surfaceVariant
                             ) {
                                 Text(
-                                    text = expense.category,
+                                    text = LakuStrings.translateExpenseCategory(expense.category, lang),
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -584,7 +585,7 @@ fun ExpenseItemCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Catatan: ${expense.note}",
+                        text = "${LakuStrings.get("note_prefix", lang)} ${expense.note}",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
@@ -608,7 +609,7 @@ fun ExpenseItemCard(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Edit,
-                        contentDescription = "Edit",
+                        contentDescription = LakuStrings.get("edit", lang),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(15.dp)
                     )
@@ -629,7 +630,7 @@ fun ExpenseItemCard(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "Hapus",
+                        contentDescription = LakuStrings.get("delete", lang),
                         tint = DangerRed.copy(alpha = 0.8f),
                         modifier = Modifier.size(18.dp)
                     )
@@ -675,11 +676,7 @@ fun AddEditExpenseDialog(
                 }
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = if (isEdit) {
-                        if (lang == "en") "Edit Expense Record" else "Edit Catatan Pengeluaran"
-                    } else {
-                        if (lang == "en") "Add Store Expense" else "Catat Pengeluaran Baru"
-                    },
+                    text = if (isEdit) LakuStrings.get("edit_expense_title", lang) else LakuStrings.get("add_expense_title", lang),
                     fontWeight = FontWeight.Bold,
                     fontSize = 17.sp
                 )
@@ -706,8 +703,8 @@ fun AddEditExpenseDialog(
                         title = it
                         errorText = ""
                     },
-                    label = { Text("Nama / Keterangan Pengeluaran *", fontSize = 12.sp) },
-                    placeholder = { Text("cth: Listrik Toko, Beli Kresek", fontSize = 12.sp) },
+                    label = { Text(LakuStrings.get("expense_name_label", lang), fontSize = 12.sp) },
+                    placeholder = { Text(LakuStrings.get("expense_name_placeholder", lang), fontSize = 12.sp) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp)
@@ -716,10 +713,10 @@ fun AddEditExpenseDialog(
                 // Category selector dropdown
                 Box(modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(
-                        value = category,
+                        value = LakuStrings.translateExpenseCategory(category, lang),
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Kategori Pengeluaran", fontSize = 12.sp) },
+                        label = { Text(LakuStrings.get("expense_category_label", lang), fontSize = 12.sp) },
                         trailingIcon = {
                             Icon(
                                 Icons.Default.ArrowDropDown,
@@ -739,7 +736,7 @@ fun AddEditExpenseDialog(
                     ) {
                         Categories.EXPENSE_CATEGORIES.forEach { cat ->
                             DropdownMenuItem(
-                                text = { Text(cat, fontSize = 13.sp) },
+                                text = { Text(LakuStrings.translateExpenseCategory(cat, lang), fontSize = 13.sp) },
                                 onClick = {
                                     category = cat
                                     categoryExpanded = false
@@ -756,8 +753,8 @@ fun AddEditExpenseDialog(
                         amountText = FormatUtils.formatInputDotted(it)
                         errorText = ""
                     },
-                    label = { Text("Jumlah Biaya (${FormatUtils.currencySymbol}) *", fontSize = 12.sp) },
-                    placeholder = { Text("cth: 50.000", fontSize = 12.sp) },
+                    label = { Text("${LakuStrings.get("expense_amount_label", lang)} (${FormatUtils.currencySymbol}) *", fontSize = 12.sp) },
+                    placeholder = { Text("${LakuStrings.get("example_prefix", lang)} 50.000", fontSize = 12.sp) },
                     prefix = { Text("${FormatUtils.currencySymbol} ") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
@@ -769,8 +766,8 @@ fun AddEditExpenseDialog(
                 OutlinedTextField(
                     value = note,
                     onValueChange = { note = it },
-                    label = { Text("Catatan Tambahan (Opsional)", fontSize = 12.sp) },
-                    placeholder = { Text("cth: Pembayaran via transfer BCA", fontSize = 12.sp) },
+                    label = { Text(LakuStrings.get("expense_note_label", lang), fontSize = 12.sp) },
+                    placeholder = { Text(LakuStrings.get("expense_note_placeholder", lang), fontSize = 12.sp) },
                     maxLines = 2,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp)
@@ -782,9 +779,9 @@ fun AddEditExpenseDialog(
                 onClick = {
                     val amount = FormatUtils.parseNumberFromDotted(amountText)
                     if (title.isBlank()) {
-                        errorText = "Mohon isi nama / keterangan pengeluaran."
+                        errorText = LakuStrings.get("expense_name_error", lang)
                     } else if (amount <= 0.0) {
-                        errorText = "Jumlah biaya harus lebih besar dari 0."
+                        errorText = LakuStrings.get("expense_amount_error", lang)
                     } else {
                         onSave(
                             initialExpense?.id ?: 0L,

@@ -1,5 +1,6 @@
 package com.example.ui.theme
 
+import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -8,8 +9,14 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.Density
+import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
     primary = DarkEmeraldPrimary,
@@ -47,14 +54,16 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun LakuKasirTheme(
-    themeSetting: String = "light", // Default light theme
-    dynamicColor: Boolean = false, // Keep branded emerald colors
+    themeSetting: String = "light",
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
+    val systemDark = isSystemInDarkTheme()
     val darkTheme = when (themeSetting) {
         "dark" -> true
         "light" -> false
-        else -> false // Default to light theme
+        "system" -> systemDark
+        else -> false
     }
 
     val colorScheme = when {
@@ -66,9 +75,27 @@ fun LakuKasirTheme(
         else -> LightColorScheme
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as? Activity)?.window
+            if (window != null) {
+                val controller = WindowCompat.getInsetsController(window, view)
+                controller.isAppearanceLightStatusBars = !darkTheme
+                controller.isAppearanceLightNavigationBars = !darkTheme
+            }
+        }
+    }
+
+    // Lock fontScale to 1.0f so changing Android system font size does not distort the app UI
+    val currentDensity = LocalDensity.current
+    val lockedDensity = Density(density = currentDensity.density, fontScale = 1.0f)
+
+    CompositionLocalProvider(LocalDensity provides lockedDensity) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }

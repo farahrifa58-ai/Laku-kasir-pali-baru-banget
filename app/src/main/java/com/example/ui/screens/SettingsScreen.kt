@@ -1,1082 +1,395 @@
 package com.example.ui.screens
 
-import android.net.Uri
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.AddPhotoAlternate
-import androidx.compose.material.icons.filled.Backup
-import androidx.compose.material.icons.filled.Business
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.CloudUpload
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.MonetizationOn
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.filled.Receipt
-import androidx.compose.material.icons.filled.Stars
-import androidx.compose.material.icons.filled.Restore
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.filled.Verified
-import com.example.ui.components.CurrencySelectionDialog
-import com.example.ui.components.LanguageSelectionDialog
-import com.example.data.model.AppLanguage
-import com.example.data.model.LanguageCatalog
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
-import com.example.R
-import com.example.data.model.AppCurrency
-import com.example.data.model.CurrencyCatalog
-import com.example.data.model.StoreProfile
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.model.LanguageCatalog
 import com.example.ui.LakuKasirViewModel
-import com.example.ui.theme.EmeraldGreenDark
-import com.example.ui.theme.EmeraldGreenPrimary
-import com.example.util.BackupRestoreHelper
-import com.example.util.FormatUtils
+import com.example.ui.components.StoreAvatar
+import com.example.ui.screens.settings.*
+import com.example.ui.theme.PrimaryGreen
 import com.example.util.LakuStrings
-import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+private enum class SettingsSection {
+    HUB,
+    STORE_PROFILE,
+    RECEIPT_CUSTOMIZATION,
+    TAX_DISCOUNT,
+    PRINTER,
+    THEME_LANGUAGE,
+    TUTORIAL,
+    BACKUP_RESTORE,
+    ABOUT
+}
+
 @Composable
 fun SettingsScreen(
     viewModel: LakuKasirViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit = {}
 ) {
-    val context = LocalContext.current
-    val currentProfile by viewModel.storeProfile.collectAsState()
+    val storeProfile by viewModel.storeProfile.collectAsStateWithLifecycle()
+    val lang = storeProfile.language
+    var currentSection by remember { mutableStateOf(SettingsSection.HUB) }
 
-    var storeName by remember(currentProfile) { mutableStateOf(currentProfile.storeName) }
-    var ownerName by remember(currentProfile) { mutableStateOf(currentProfile.ownerName) }
-    var address by remember(currentProfile) { mutableStateOf(currentProfile.address) }
-    var phone by remember(currentProfile) { mutableStateOf(currentProfile.phone) }
-    var receiptNotes by remember(currentProfile) { mutableStateOf(currentProfile.receiptNotes) }
-    var logoUri by remember(currentProfile) { mutableStateOf(currentProfile.logoUri) }
-    var selectedTheme by remember(currentProfile) { mutableStateOf(currentProfile.themeMode) }
-    var selectedLanguage by remember(currentProfile) { mutableStateOf(currentProfile.language) }
-    var selectedCurrencyCode by remember(currentProfile) { mutableStateOf(currentProfile.currencyCode) }
-
-    var showAboutDialog by remember { mutableStateOf(false) }
-    var showLanguageDialog by remember { mutableStateOf(false) }
-    var saveSuccessMessage by remember { mutableStateOf(false) }
-
-    val coroutineScope = rememberCoroutineScope()
-    val products by viewModel.allProducts.collectAsState()
-    val transactions by viewModel.allTransactions.collectAsState()
-    val expenses by viewModel.allExpenses.collectAsState()
-    val isProLicense by viewModel.isProLicense.collectAsState()
-
-    val restoreFileLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            coroutineScope.launch {
-                BackupRestoreHelper.restoreBackupFromJsonUri(
-                    context = context,
-                    uri = uri,
-                    onSuccess = { pCount, tCount ->
-                        Toast.makeText(context, "Berhasil memulihkan $pCount produk & $tCount transaksi!", Toast.LENGTH_LONG).show()
-                    },
-                    onError = { err ->
-                        Toast.makeText(context, err, Toast.LENGTH_LONG).show()
-                    }
-                )
-            }
-        }
+    BackHandler(enabled = currentSection != SettingsSection.HUB) {
+        currentSection = SettingsSection.HUB
     }
 
-    val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            val permanentPath = com.example.util.ImageUtils.saveImageToInternalStorage(context, uri, "store_logo")
-            if (permanentPath != null) {
-                logoUri = permanentPath
-            }
-        }
-    }
-
-    val onSaveSettings = {
-        val updated = currentProfile.copy(
-            storeName = storeName.trim(),
-            ownerName = ownerName.trim(),
-            address = address.trim(),
-            phone = phone.trim(),
-            receiptNotes = receiptNotes.trim(),
-            logoUri = logoUri,
-            themeMode = selectedTheme,
-            language = selectedLanguage,
-            currencyCode = selectedCurrencyCode
-        )
-        viewModel.updateStoreProfile(updated)
-        saveSuccessMessage = true
-        Toast.makeText(context, LakuStrings.get("settings_saved", selectedLanguage), Toast.LENGTH_SHORT).show()
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(LakuStrings.get("settings", selectedLanguage), fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack, modifier = Modifier.testTag("settings_back_button")) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
-                    }
-                },
-                actions = {
-                    Button(
-                        onClick = onSaveSettings,
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                        modifier = Modifier
-                            .padding(end = 8.dp)
-                            .testTag("settings_top_save_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Simpan",
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            fontSize = 14.sp
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
-                )
-            )
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-
-            // Edit Profil Toko & Upload Logo
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.Business, contentDescription = null, tint = EmeraldGreenPrimary)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = LakuStrings.get("store_profile", selectedLanguage),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
-                        )
-                    }
-
-                    // Logo Toko Upload Area
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(72.dp)
-                                .clip(CircleShape)
-                                .background(EmeraldGreenPrimary.copy(alpha = 0.1f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (logoUri != null) {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(context)
-                                        .data(logoUri)
-                                        .error(R.drawable.logo_laku_kasir)
-                                        .fallback(R.drawable.logo_laku_kasir)
-                                        .crossfade(true)
-                                        .build(),
-                                    contentDescription = "Logo Toko",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            } else {
-                                Image(
-                                    painter = painterResource(id = R.drawable.logo_laku_kasir),
-                                    contentDescription = "Logo Toko Default",
-                                    modifier = Modifier.size(44.dp)
-                                )
-                            }
-                        }
-
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Button(
-                                onClick = {
-                                    photoPickerLauncher.launch(
-                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                    )
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.testTag("upload_logo_button")
-                            ) {
-                                Icon(imageVector = Icons.Default.AddPhotoAlternate, contentDescription = null, tint = Color.White)
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = if (logoUri != null) LakuStrings.get("change_logo", selectedLanguage) else LakuStrings.get("upload_logo", selectedLanguage),
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-
-                            if (logoUri != null) {
-                                OutlinedButton(
-                                    onClick = { logoUri = null },
-                                    shape = RoundedCornerShape(10.dp)
-                                ) {
-                                    Text(LakuStrings.get("delete_logo", selectedLanguage), fontSize = 11.sp, color = Color.Red)
-                                }
-                            }
-                        }
-                    }
-
-                    HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
-
-                    // Nama Toko
-                    OutlinedTextField(
-                        value = storeName,
-                        onValueChange = { storeName = it },
-                        label = { Text(LakuStrings.get("store_name", selectedLanguage)) },
-                        placeholder = { Text("Contoh: Toko Berkah Jaya") },
-                        leadingIcon = { Icon(imageVector = Icons.Default.Business, contentDescription = null, tint = EmeraldGreenPrimary) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("store_name_input"),
-                        singleLine = true,
-                        shape = RoundedCornerShape(10.dp)
-                    )
-
-                    // Nama Pemilik
-                    OutlinedTextField(
-                        value = ownerName,
-                        onValueChange = { ownerName = it },
-                        label = { Text(LakuStrings.get("owner_name", selectedLanguage)) },
-                        placeholder = { Text("Contoh: Rafline") },
-                        leadingIcon = { Icon(imageVector = Icons.Default.Person, contentDescription = null, tint = EmeraldGreenPrimary) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("owner_name_input"),
-                        singleLine = true,
-                        shape = RoundedCornerShape(10.dp)
-                    )
-
-                    // Alamat Toko
-                    OutlinedTextField(
-                        value = address,
-                        onValueChange = { address = it },
-                        label = { Text(LakuStrings.get("store_address", selectedLanguage)) },
-                        placeholder = { Text("Contoh: Jl. Merdeka No. 45, Jakarta") },
-                        leadingIcon = { Icon(imageVector = Icons.Default.Place, contentDescription = null, tint = EmeraldGreenPrimary) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("address_input"),
-                        maxLines = 2,
-                        shape = RoundedCornerShape(10.dp)
-                    )
-
-                    // Nomor Telepon / WA Toko
-                    OutlinedTextField(
-                        value = phone,
-                        onValueChange = { phone = it },
-                        label = { Text(LakuStrings.get("whatsapp_no", selectedLanguage)) },
-                        placeholder = { Text("Contoh: 081234567890") },
-                        leadingIcon = { Icon(imageVector = Icons.Default.Phone, contentDescription = null, tint = EmeraldGreenPrimary) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("phone_input"),
-                        singleLine = true,
-                        shape = RoundedCornerShape(10.dp)
-                    )
-
-                    // Catatan Struk / Kuitansi
-                    OutlinedTextField(
-                        value = receiptNotes,
-                        onValueChange = { receiptNotes = it },
-                        label = { Text(LakuStrings.get("receipt_notes", selectedLanguage)) },
-                        placeholder = { Text("Contoh: Terima kasih telah berbelanja! Semoga berkah.") },
-                        leadingIcon = { Icon(imageVector = Icons.Default.Receipt, contentDescription = null, tint = EmeraldGreenPrimary) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("receipt_notes_input"),
-                        minLines = 2,
-                        maxLines = 4,
-                        shape = RoundedCornerShape(10.dp)
-                    )
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .systemBarsPadding()
+    ) {
+        when (currentSection) {
+            SettingsSection.HUB -> {
+                val activeLangObj = remember(lang) { LanguageCatalog.getLanguage(lang) }
+                val themeLabel = when (storeProfile.themeMode) {
+                    "dark" -> LakuStrings.get("theme_dark", lang)
+                    "system" -> LakuStrings.get("theme_system", lang)
+                    else -> LakuStrings.get("theme_light", lang)
                 }
-            }
-
-            // Ganti Tema (Terang, Gelap, Sesuai Sistem)
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.Palette, contentDescription = null, tint = EmeraldGreenPrimary)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = LakuStrings.get("theme", selectedLanguage),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        val themes = listOf(
-                            "system" to LakuStrings.get("theme_system", selectedLanguage),
-                            "light" to LakuStrings.get("theme_light", selectedLanguage),
-                            "dark" to LakuStrings.get("theme_dark", selectedLanguage)
-                        )
-
-                        themes.forEach { (mode, label) ->
-                            val isSelected = selectedTheme == mode
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = if (isSelected) EmeraldGreenPrimary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                                border = BorderStroke(1.dp, if (isSelected) EmeraldGreenPrimary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable {
-                                        selectedTheme = mode
-                                        viewModel.setThemeMode(mode)
-                                    }
-                                    .testTag("theme_chip_$mode")
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 10.dp, horizontal = 4.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = label,
-                                        fontSize = 12.sp,
-                                        maxLines = 1,
-                                        softWrap = false,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            }
-                        }
-                    }
+                val ppnSummary = if (storeProfile.ppnMode == "auto") {
+                    val r = if (storeProfile.defaultPpnRate % 1.0 == 0.0) storeProfile.defaultPpnRate.toInt().toString() else storeProfile.defaultPpnRate.toString()
+                    "${LakuStrings.get("ppn_label", lang)}: $r%"
+                } else {
+                    "${LakuStrings.get("ppn_label", lang)}: ${LakuStrings.get("ppn_mode_manual", lang)}"
                 }
-            }
+                val discountSummary = if (storeProfile.discountMode == "percent") {
+                    "${LakuStrings.get("discount", lang)}: %"
+                } else {
+                    "${LakuStrings.get("discount", lang)}: ${LakuStrings.get("discount_mode_manual", lang)}"
+                }
+                val printerSummary = if (storeProfile.printerName.isNotBlank()) {
+                    "${storeProfile.printerName} • ${storeProfile.paperSize}"
+                } else {
+                    "${storeProfile.paperSize} • ${LakuStrings.get("paper_size_title", lang)}"
+                }
 
-            // Bahasa Aplikasi (Asia Tenggara, Asia, Eropa & Rusia, Amerika, Afrika)
-            val currentLangObj = remember(selectedLanguage) {
-                LanguageCatalog.getLanguage(selectedLanguage)
-            }
-
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    // Header with Back button
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.Language, contentDescription = null, tint = EmeraldGreenPrimary)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = LakuStrings.get("language", selectedLanguage),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp
-                            )
-                        }
-
-                        Button(
-                            onClick = { showLanguageDialog = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                            modifier = Modifier.testTag("choose_language_button")
+                        IconButton(
+                            onClick = onBack,
+                            modifier = Modifier.testTag("settings_hub_back_button")
                         ) {
-                            Icon(imageVector = Icons.Default.Language, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "Pilih Bahasa",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        }
-                    }
-
-                    // Active Language Banner
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = EmeraldGreenPrimary.copy(alpha = 0.08f),
-                        border = BorderStroke(1.dp, EmeraldGreenPrimary.copy(alpha = 0.35f)),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showLanguageDialog = true }
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(text = currentLangObj.flag, fontSize = 28.sp)
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            text = currentLangObj.nativeName,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 15.sp,
-                                            color = EmeraldGreenDark
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Surface(
-                                            shape = RoundedCornerShape(4.dp),
-                                            color = EmeraldGreenPrimary
-                                        ) {
-                                            Text(
-                                                text = currentLangObj.code.uppercase(),
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color.White,
-                                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                                            )
-                                        }
-                                    }
-                                    Text(
-                                        text = "${currentLangObj.name} • ${currentLangObj.country} (${currentLangObj.region})",
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = null,
-                                tint = EmeraldGreenDark,
-                                modifier = Modifier.size(18.dp)
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = LakuStrings.get("back", lang)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = LakuStrings.get("settings", lang),
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                            Text(
+                                text = LakuStrings.get("settings_subtitle", lang),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
 
-                    // Quick Select Regional Language Chips
-                    Text(
-                        text = "Pilihan Cepat Bahasa Kawasan:",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        val quickLanguages = listOf(
-                            "id" to "🇮🇩 ID",
-                            "ms" to "🇲🇾 MS",
-                            "vi" to "🇻🇳 VI",
-                            "th" to "🇹🇭 TH",
-                            "fil" to "🇵🇭 FIL",
-                            "en" to "🇬🇧 EN",
-                            "ru" to "🇷🇺 RU",
-                            "ja" to "🇯🇵 JA",
-                            "ko" to "🇰🇷 KO",
-                            "zh" to "🇨🇳 ZH",
-                            "ar" to "🇸🇦 AR",
-                            "hi" to "🇮🇳 HI",
-                            "de" to "🇩🇪 DE",
-                            "fr" to "🇫🇷 FR",
-                            "es" to "🇪🇸 ES",
-                            "pt" to "🇧🇷 PT",
-                            "sw" to "🇰🇪 SW"
-                        )
-
-                        items(quickLanguages) { (code, label) ->
-                            val isSelected = selectedLanguage.equals(code, ignoreCase = true)
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = if (isSelected) EmeraldGreenPrimary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                                border = BorderStroke(1.dp, if (isSelected) EmeraldGreenPrimary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-                                modifier = Modifier
-                                    .clickable {
-                                        selectedLanguage = code
-                                        viewModel.setLanguage(code)
-                                    }
-                                    .testTag("quick_lang_$code")
-                            ) {
-                                Text(
-                                    text = label,
-                                    fontSize = 12.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Cadangkan Data ke Google Drive atau Kirim ke WhatsApp
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                // 1. Store Profile Card (Featured Hero Card)
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { currentSection = SettingsSection.STORE_PROFILE }
+                        .testTag("settings_card_store_profile"),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+                    border = BorderStroke(1.dp, PrimaryGreen.copy(alpha = 0.3f))
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.Backup, contentDescription = null, tint = EmeraldGreenPrimary)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = LakuStrings.get("backup_restore", selectedLanguage),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
-                            color = EmeraldGreenDark
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        StoreAvatar(
+                            storeProfile = storeProfile,
+                            size = 58.dp,
+                            shape = RoundedCornerShape(14.dp),
+                            contentDescription = LakuStrings.get("store_profile", lang)
                         )
-                    }
-
-                    Text(
-                        text = LakuStrings.get("backup_restore_desc", selectedLanguage),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Spacer(modifier = Modifier.height(2.dp))
-
-                    // Tombol Cadangkan ke Google Drive
-                    Button(
-                        onClick = {
-                            coroutineScope.launch {
-                                val file = BackupRestoreHelper.createBackupJson(
-                                    context, currentProfile, products, transactions, expenses
-                                )
-                                if (file != null) {
-                                    BackupRestoreHelper.backupToGoogleDrive(context, file)
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = LakuStrings.get("store_profile", lang),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = PrimaryGreen,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = storeProfile.storeName,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = if (storeProfile.operatingHours.isNotBlank()) {
+                                    "${LakuStrings.get("hours_label", lang)}: ${storeProfile.operatingHours}"
                                 } else {
-                                    Toast.makeText(context, "Gagal membuat file cadangan", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A73E8)),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                            .testTag("backup_drive_button")
-                    ) {
-                        Icon(imageVector = Icons.Default.CloudUpload, contentDescription = null, tint = Color.White)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = LakuStrings.get("backup_google_drive", selectedLanguage),
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            fontSize = 13.sp
-                        )
-                    }
-
-                    // Tombol Kirim File ke WhatsApp
-                    Button(
-                        onClick = {
-                            coroutineScope.launch {
-                                val file = BackupRestoreHelper.createBackupJson(
-                                    context, currentProfile, products, transactions, expenses
-                                )
-                                if (file != null) {
-                                    BackupRestoreHelper.shareBackupToWhatsApp(context, file)
-                                } else {
-                                    Toast.makeText(context, "Gagal membuat file cadangan", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                            .testTag("backup_whatsapp_button")
-                    ) {
-                        Icon(imageVector = Icons.Default.Send, contentDescription = null, tint = Color.White)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = LakuStrings.get("backup_whatsapp", selectedLanguage),
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            fontSize = 13.sp
-                        )
-                    }
-
-                    // Tombol Pulihkan Data dari File
-                    OutlinedButton(
-                        onClick = {
-                            restoreFileLauncher.launch("application/json")
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(44.dp)
-                            .testTag("restore_backup_button")
-                    ) {
-                        Icon(imageVector = Icons.Default.Restore, contentDescription = null, tint = EmeraldGreenDark)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = LakuStrings.get("restore_json", selectedLanguage),
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 13.sp,
-                            color = EmeraldGreenDark
+                                    LakuStrings.get("store_profile_card_desc", lang)
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = PrimaryGreen
                         )
                     }
                 }
-            }
 
-            // Tombol Simpan Pengaturan
-            Button(
-                onClick = onSaveSettings,
-                colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary),
-                shape = RoundedCornerShape(14.dp),
+                // 2. Receipt Customization Card
+                SettingsMenuCard(
+                    title = LakuStrings.get("receipt_customization", lang),
+                    subtitle = LakuStrings.get("receipt_customization_desc", lang),
+                    badgeText = "${storeProfile.receiptPrefix.ifBlank { "LK" }}-•••",
+                    icon = Icons.Default.ReceiptLong,
+                    accentColor = Color(0xFF0284C7),
+                    onClick = { currentSection = SettingsSection.RECEIPT_CUSTOMIZATION },
+                    tag = "settings_card_receipt"
+                )
+
+                // 3. PPN & Discount Card
+                SettingsMenuCard(
+                    title = LakuStrings.get("ppn_discount_title", lang),
+                    subtitle = "$ppnSummary • $discountSummary",
+                    icon = Icons.Default.Percent,
+                    accentColor = Color(0xFFD97706),
+                    onClick = { currentSection = SettingsSection.TAX_DISCOUNT },
+                    tag = "settings_card_tax_discount"
+                )
+
+                // 4. Printer & Paper Size Card
+                SettingsMenuCard(
+                    title = LakuStrings.get("printer_settings", lang),
+                    subtitle = printerSummary,
+                    badgeText = storeProfile.paperSize,
+                    icon = Icons.Default.Print,
+                    accentColor = Color(0xFF0D9488),
+                    onClick = { currentSection = SettingsSection.PRINTER },
+                    tag = "settings_card_printer"
+                )
+
+                // 5. Theme & Language Card
+                SettingsMenuCard(
+                    title = LakuStrings.get("theme_language_title", lang),
+                    subtitle = "$themeLabel • ${activeLangObj.flag} ${activeLangObj.nativeName}",
+                    icon = Icons.Default.Translate,
+                    accentColor = Color(0xFF7C3AED),
+                    onClick = { currentSection = SettingsSection.THEME_LANGUAGE },
+                    tag = "settings_card_theme_language"
+                )
+
+                // 6. Tutorial Card
+                SettingsMenuCard(
+                    title = LakuStrings.get("tutorial_title", lang),
+                    subtitle = LakuStrings.get("tutorial_desc", lang),
+                    icon = Icons.Default.MenuBook,
+                    accentColor = Color(0xFFDB2777),
+                    onClick = { currentSection = SettingsSection.TUTORIAL },
+                    tag = "settings_card_tutorial"
+                )
+
+                // 7. Backup & Restore Card
+                SettingsMenuCard(
+                    title = LakuStrings.get("backup_restore", lang),
+                    subtitle = LakuStrings.get("backup_restore_card_desc", lang),
+                    icon = Icons.Default.CloudSync,
+                    accentColor = Color(0xFF4F46E5),
+                    onClick = { currentSection = SettingsSection.BACKUP_RESTORE },
+                    tag = "settings_card_backup"
+                )
+
+                // 8. About App Card
+                SettingsMenuCard(
+                    title = LakuStrings.get("about_app", lang),
+                    subtitle = LakuStrings.get("about_app_subtitle", lang),
+                    badgeText = "v1.1",
+                    icon = Icons.Default.Info,
+                    accentColor = PrimaryGreen,
+                    onClick = { currentSection = SettingsSection.ABOUT },
+                    tag = "settings_card_about"
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+        }
+
+        SettingsSection.STORE_PROFILE -> StoreProfileSettingsScreen(
+            viewModel = viewModel,
+            storeProfile = storeProfile,
+            onBack = { currentSection = SettingsSection.HUB }
+        )
+
+        SettingsSection.RECEIPT_CUSTOMIZATION -> ReceiptCustomizationScreen(
+            viewModel = viewModel,
+            storeProfile = storeProfile,
+            onBack = { currentSection = SettingsSection.HUB }
+        )
+
+        SettingsSection.TAX_DISCOUNT -> TaxDiscountSettingsScreen(
+            viewModel = viewModel,
+            storeProfile = storeProfile,
+            onBack = { currentSection = SettingsSection.HUB }
+        )
+
+        SettingsSection.PRINTER -> PrinterSettingsScreen(
+            viewModel = viewModel,
+            storeProfile = storeProfile,
+            onBack = { currentSection = SettingsSection.HUB }
+        )
+
+        SettingsSection.THEME_LANGUAGE -> ThemeLanguageSettingsScreen(
+            viewModel = viewModel,
+            storeProfile = storeProfile,
+            onBack = { currentSection = SettingsSection.HUB }
+        )
+
+        SettingsSection.TUTORIAL -> TutorialSettingsScreen(
+            storeProfile = storeProfile,
+            onBack = { currentSection = SettingsSection.HUB }
+        )
+
+        SettingsSection.BACKUP_RESTORE -> BackupRestoreSettingsScreen(
+            viewModel = viewModel,
+            storeProfile = storeProfile,
+            onBack = { currentSection = SettingsSection.HUB }
+        )
+
+        SettingsSection.ABOUT -> AboutAppSettingsScreen(
+            storeProfile = storeProfile,
+            onBack = { currentSection = SettingsSection.HUB }
+        )
+        }
+    }
+}
+
+@Composable
+private fun SettingsMenuCard(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    accentColor: Color,
+    onClick: () -> Unit,
+    tag: String,
+    badgeText: String? = null
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .testTag(tag),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 72.dp)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp)
-                    .testTag("save_settings_button")
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(accentColor.copy(alpha = 0.13f)),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(imageVector = Icons.Default.Check, contentDescription = null, tint = Color.White)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = LakuStrings.get("save_settings", selectedLanguage),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
-                    color = Color.White
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(24.dp)
                 )
             }
 
-            if (saveSuccessMessage) {
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            if (!badgeText.isNullOrBlank()) {
+                Spacer(modifier = Modifier.width(8.dp))
                 Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = EmeraldGreenPrimary.copy(alpha = 0.15f),
-                    modifier = Modifier.fillMaxWidth()
+                    color = accentColor.copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = LakuStrings.get("settings_saved", selectedLanguage),
-                        color = EmeraldGreenDark,
+                        text = badgeText,
+                        color = accentColor,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
-                        modifier = Modifier.padding(12.dp)
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
             }
 
-            // TENTANG APLIKASI (CLICKABLE ITEM DI BAGIAN BAWAH)
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                border = BorderStroke(1.dp, EmeraldGreenPrimary.copy(alpha = 0.25f)),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { showAboutDialog = true }
-                    .testTag("about_app_button")
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(EmeraldGreenPrimary.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = null,
-                                tint = EmeraldGreenDark,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                        Column {
-                            Text(
-                                text = LakuStrings.get("about_app", selectedLanguage),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = LakuStrings.get("about_app_subtitle", selectedLanguage),
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = "Buka Tentang Aplikasi",
-                        tint = EmeraldGreenDark
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
-    }
-
-    // DIALOG TENTANG APLIKASI (MODAL DIALOG)
-    if (showAboutDialog) {
-        AlertDialog(
-            onDismissRequest = { showAboutDialog = false },
-            confirmButton = {
-                Button(
-                    onClick = { showAboutDialog = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .testTag("close_about_dialog_button")
-                ) {
-                    Text(
-                        text = LakuStrings.get("close", selectedLanguage),
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        fontSize = 15.sp
-                    )
-                }
-            },
-            title = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(EmeraldGreenPrimary.copy(alpha = 0.15f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = null,
-                            tint = EmeraldGreenDark,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                    Text(
-                        text = LakuStrings.get("about_app", selectedLanguage),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
-                    )
-                }
-            },
-            text = {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    // Nama Aplikasi & Versi
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column {
-                            Text(
-                                text = "Laku Kasir Pro",
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 18.sp,
-                                color = EmeraldGreenDark
-                            )
-                            Text(
-                                text = LakuStrings.get("version", selectedLanguage),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = EmeraldGreenPrimary
-                        ) {
-                            Text(
-                                text = "v1.1",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                            )
-                        }
-                    }
-
-                    // Lisensi Status (PRO vs Trial)
-                    if (isProLicense) {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFFE8F5E9),
-                            border = BorderStroke(1.5.dp, EmeraldGreenPrimary),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Verified,
-                                    contentDescription = null,
-                                    tint = EmeraldGreenDark,
-                                    modifier = Modifier.size(26.dp)
-                                )
-                                Column {
-                                    Text(
-                                        text = LakuStrings.get("full_version_title", selectedLanguage),
-                                        fontWeight = FontWeight.ExtraBold,
-                                        fontSize = 13.sp,
-                                        color = EmeraldGreenDark
-                                    )
-                                    Text(
-                                        text = LakuStrings.get("full_version_desc", selectedLanguage),
-                                        fontSize = 11.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    } else {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFFFFF3E0),
-                            border = BorderStroke(1.5.dp, Color(0xFFFFB74D)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Stars,
-                                        contentDescription = null,
-                                        tint = Color(0xFFE65100),
-                                        modifier = Modifier.size(26.dp)
-                                    )
-                                    Column {
-                                        Text(
-                                            text = "Mode Uji Coba (Trial Version)",
-                                            fontWeight = FontWeight.ExtraBold,
-                                            fontSize = 13.sp,
-                                            color = Color(0xFFE65100)
-                                        )
-                                        Text(
-                                            text = "Batas: Maksimal 3 Transaksi & 3 Produk",
-                                            fontSize = 11.sp,
-                                            color = Color(0xFFBF360C)
-                                        )
-                                    }
-                                }
-                                Button(
-                                    onClick = { viewModel.openActivationDialog() },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE65100)),
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text("Aktivasi Lisensi PRO Resmi", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                }
-                            }
-                        }
-                    }
-
-                    // Developer Information
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = LakuStrings.get("developer_label", selectedLanguage),
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = LakuStrings.get("developer_value", selectedLanguage),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
-
-                    // Keterangan Fitur Aplikasi
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = LakuStrings.get("features_label", selectedLanguage),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
-                                color = EmeraldGreenDark
-                            )
-                            Text(
-                                text = LakuStrings.get("features_list", selectedLanguage),
-                                fontSize = 11.sp,
-                                lineHeight = 17.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            },
-            shape = RoundedCornerShape(20.dp)
-        )
-    }
-
-    if (showLanguageDialog) {
-        LanguageSelectionDialog(
-            activeCode = selectedLanguage,
-            onSelect = { lang ->
-                selectedLanguage = lang.code
-                viewModel.setLanguage(lang.code)
-            },
-            onDismiss = { showLanguageDialog = false }
-        )
     }
 }

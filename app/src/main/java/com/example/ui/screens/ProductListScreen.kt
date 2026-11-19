@@ -79,6 +79,7 @@ import com.example.ui.Screen
 import com.example.ui.components.AppBottomBar
 import com.example.ui.components.AppTopBar
 import com.example.ui.components.BarcodeScannerDialog
+import com.example.ui.components.CompactSearchBar
 import com.example.ui.components.CurrencySelectionDialog
 import com.example.ui.theme.DangerRed
 import com.example.ui.theme.EmeraldGreenDark
@@ -152,7 +153,7 @@ fun ProductListScreen(
                 contentColor = Color.White,
                 modifier = Modifier.testTag("add_product_fab")
             ) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "Tambah Produk")
+                Icon(imageVector = Icons.Default.Add, contentDescription = LakuStrings.get("add_product", lang))
             }
         }
     ) { innerPadding ->
@@ -208,38 +209,28 @@ fun ProductListScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedTextField(
+                CompactSearchBar(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text(LakuStrings.get("search_product_placeholder", lang), fontSize = 14.sp) },
-                    leadingIcon = {
-                        Icon(imageVector = Icons.Default.Search, contentDescription = "Cari", tint = MaterialTheme.colorScheme.primary)
-                    },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = "" }) {
-                                Icon(imageVector = Icons.Default.Clear, contentDescription = "Hapus")
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(14.dp),
+                    placeholder = LakuStrings.get("search_product_placeholder", lang),
+                    searchContentDescription = LakuStrings.get("search", lang),
+                    clearContentDescription = LakuStrings.get("clear", lang),
                     modifier = Modifier.weight(1f)
                 )
 
                 // Button Scan Barcode Kamera
                 Surface(
                     onClick = { showBarcodeScanner = true },
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(12.dp),
                     color = EmeraldGreenPrimary,
-                    modifier = Modifier.size(54.dp)
+                    modifier = Modifier.size(42.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Default.QrCodeScanner,
-                            contentDescription = "Scan Barcode Produk",
+                            contentDescription = LakuStrings.get("scan_barcode_title", lang),
                             tint = Color.White,
-                            modifier = Modifier.size(26.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
@@ -256,7 +247,7 @@ fun ProductListScreen(
                     FilterChip(
                         selected = showOnlyLowStock,
                         onClick = { showOnlyLowStock = !showOnlyLowStock },
-                        label = { Text("⚠️ Stok Menipis", fontSize = 12.sp, fontWeight = if (showOnlyLowStock) FontWeight.Bold else FontWeight.Normal) },
+                        label = { Text("⚠️ ${LakuStrings.get("low_stock_chip", lang)}", fontSize = 12.sp, fontWeight = if (showOnlyLowStock) FontWeight.Bold else FontWeight.Normal) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = DangerRed,
                             selectedLabelColor = Color.White
@@ -273,7 +264,7 @@ fun ProductListScreen(
                             showOnlyLowStock = false
                             selectedCategory = cat
                         },
-                        label = { Text(cat, fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
+                        label = { Text(LakuStrings.translateCategory(cat, lang), fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = EmeraldGreenPrimary,
                             selectedLabelColor = Color.White
@@ -311,13 +302,13 @@ fun ProductListScreen(
                             )
                             Spacer(modifier = Modifier.height(14.dp))
                             Text(
-                                text = "Katalog Produk Masih Kosong",
+                                text = LakuStrings.get("empty_catalog_title", lang),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = "Isi katalog produk Anda secara manual untuk mengelola stok, harga modal (HPP), harga jual, dan kontak supplier.",
+                                text = LakuStrings.get("empty_catalog_desc", lang),
                                 fontSize = 13.sp,
                                 textAlign = TextAlign.Center,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -333,7 +324,7 @@ fun ProductListScreen(
                             ) {
                                 Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = Color.White)
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Tambah Produk Baru", fontWeight = FontWeight.Bold, color = Color.White)
+                                Text(LakuStrings.get("add_new_product_btn", lang), fontWeight = FontWeight.Bold, color = Color.White)
                             }
                         }
                     }
@@ -343,7 +334,7 @@ fun ProductListScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Tidak ditemukan produk dengan filter tersebut.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(LakuStrings.get("no_filtered_products", lang), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
                 LazyColumn(
@@ -398,7 +389,7 @@ fun ProductListScreen(
                                             overflow = TextOverflow.Ellipsis
                                         )
                                         Text(
-                                            text = "${product.category} • Satuan: ${product.unit}",
+                                            text = "${LakuStrings.translateCategory(product.category, lang)} • ${LakuStrings.get("unit_prefix", lang)} ${LakuStrings.translateUnit(product.unit, lang)}",
                                             fontSize = 12.sp,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -416,13 +407,13 @@ fun ProductListScreen(
                                         viewModel.productToEdit.value = product
                                         onNavigate(Screen.ADD_EDIT_PRODUCT)
                                     }) {
-                                        Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit", tint = EmeraldGreenPrimary)
+                                        Icon(imageVector = Icons.Default.Edit, contentDescription = LakuStrings.get("edit", lang), tint = EmeraldGreenPrimary)
                                     }
 
                                     IconButton(onClick = {
                                         productToDelete = product
                                     }) {
-                                        Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = "Hapus", tint = DangerRed)
+                                        Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = LakuStrings.get("delete", lang), tint = DangerRed)
                                     }
                                 }
 
@@ -438,12 +429,12 @@ fun ProductListScreen(
                                 ) {
                                     Column {
                                         Text(
-                                            text = "Modal (HPP): ${FormatUtils.formatRupiah(product.costPrice)}",
+                                            text = "${LakuStrings.get("cost_short", lang)} ${FormatUtils.formatRupiah(product.costPrice)}",
                                             fontSize = 11.sp,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                         Text(
-                                            text = "Jual: ${FormatUtils.formatRupiah(product.sellingPrice)}",
+                                            text = "${LakuStrings.get("sell_short", lang)} ${FormatUtils.formatRupiah(product.sellingPrice)}",
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 14.sp,
                                             color = EmeraldGreenDark
@@ -457,7 +448,7 @@ fun ProductListScreen(
                                             color = EmeraldGreenPrimary.copy(alpha = 0.12f)
                                         ) {
                                             Text(
-                                                text = "Stok: Unlimited",
+                                                text = LakuStrings.get("stock_unlimited_short", lang),
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 12.sp,
                                                 color = EmeraldGreenDark,
@@ -556,8 +547,8 @@ fun ProductListScreen(
         val prod = productToDelete!!
         AlertDialog(
             onDismissRequest = { productToDelete = null },
-            title = { Text("Hapus Produk?", fontWeight = FontWeight.Bold) },
-            text = { Text("Apakah Anda yakin ingin menghapus produk '${prod.name}' dari katalog?") },
+            title = { Text(LakuStrings.get("delete_product_title", lang), fontWeight = FontWeight.Bold) },
+            text = { Text("${LakuStrings.get("delete_product_confirm", lang)} (${prod.name})") },
             confirmButton = {
                 Button(
                     onClick = {
@@ -566,12 +557,12 @@ fun ProductListScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = DangerRed)
                 ) {
-                    Text("Hapus", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(LakuStrings.get("delete", lang), color = Color.White, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { productToDelete = null }) {
-                    Text("Batal")
+                    Text(LakuStrings.get("cancel", lang))
                 }
             }
         )
@@ -580,11 +571,12 @@ fun ProductListScreen(
     if (showCurrencyDialog) {
         CurrencySelectionDialog(
             activeCode = FormatUtils.currentCurrencyCode,
+            lang = lang,
             onSelect = { curr ->
                 FormatUtils.currentCurrencyCode = curr.code
                 viewModel.setCurrency(curr.code)
                 showCurrencyDialog = false
-                android.widget.Toast.makeText(context, "Mata uang diubah ke ${curr.name} (${curr.symbol})", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, "${LakuStrings.get("currency_changed_toast", lang)} ${curr.name} (${curr.symbol})", android.widget.Toast.LENGTH_SHORT).show()
             },
             onDismiss = { showCurrencyDialog = false }
         )
@@ -592,11 +584,12 @@ fun ProductListScreen(
 
     if (showBarcodeScanner) {
         BarcodeScannerDialog(
+            lang = lang,
             onDismiss = { showBarcodeScanner = false },
             onBarcodeScanned = { scannedCode ->
                 showBarcodeScanner = false
                 searchQuery = scannedCode.trim()
-                android.widget.Toast.makeText(context, "Mencari barcode: $scannedCode", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, "${LakuStrings.get("searching_barcode_toast", lang)} $scannedCode", android.widget.Toast.LENGTH_SHORT).show()
             }
         )
     }

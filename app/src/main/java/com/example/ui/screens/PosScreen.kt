@@ -100,6 +100,7 @@ import com.example.ui.Screen
 import com.example.ui.components.AppBottomBar
 import com.example.ui.components.AppTopBar
 import com.example.ui.components.BarcodeScannerDialog
+import com.example.ui.components.CompactSearchBar
 import com.example.ui.theme.DangerRed
 import com.example.ui.theme.EmeraldGreenDark
 import com.example.ui.theme.EmeraldGreenPrimary
@@ -171,42 +172,31 @@ fun PosScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedTextField(
+                    CompactSearchBar(
                         value = searchQuery,
                         onValueChange = { viewModel.posSearchQuery.value = it },
-                        placeholder = { Text(LakuStrings.get("search_product_barcode", lang), fontSize = 14.sp) },
-                        leadingIcon = {
-                            Icon(imageVector = Icons.Default.Search, contentDescription = "Cari", tint = MaterialTheme.colorScheme.primary)
-                        },
-                        trailingIcon = {
-                            if (searchQuery.isNotEmpty()) {
-                                IconButton(onClick = { viewModel.posSearchQuery.value = "" }) {
-                                    Icon(imageVector = Icons.Default.Clear, contentDescription = "Hapus")
-                                }
-                            }
-                        },
-                        singleLine = true,
-                        shape = RoundedCornerShape(14.dp),
+                        placeholder = LakuStrings.get("search_product_barcode", lang),
+                        searchContentDescription = LakuStrings.get("search", lang),
+                        clearContentDescription = LakuStrings.get("clear", lang),
                         modifier = Modifier
                             .weight(1f)
                             .testTag("pos_search_input")
                     )
 
-                    // Button Scan Barcode Kamera
                     Surface(
                         onClick = { showBarcodeScanner = true },
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(12.dp),
                         color = EmeraldGreenPrimary,
                         modifier = Modifier
-                            .size(54.dp)
+                            .size(42.dp)
                             .testTag("pos_scan_barcode_button")
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
                                 imageVector = Icons.Default.QrCodeScanner,
-                                contentDescription = "Scan Barcode Kamera",
+                                contentDescription = LakuStrings.get("scan_barcode_title", lang),
                                 tint = Color.White,
-                                modifier = Modifier.size(26.dp)
+                                modifier = Modifier.size(22.dp)
                             )
                         }
                     }
@@ -221,7 +211,7 @@ fun PosScreen(
                 ) {
                     items(categoriesList) { cat ->
                         val isSelected = cat.equals(selectedCategory, ignoreCase = true)
-                        val displayCat = if (cat.equals("Semua", ignoreCase = true)) LakuStrings.get("all", lang) else cat
+                        val displayCat = LakuStrings.translateCategory(cat, lang)
                         FilterChip(
                             selected = isSelected,
                             onClick = { viewModel.posSelectedCategory.value = cat },
@@ -315,7 +305,7 @@ fun PosScreen(
                                     ) {
                                         Icon(Icons.Default.Stars, contentDescription = null, tint = Color(0xFFF57C00), modifier = Modifier.size(16.dp))
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        Text("Muat Produk Contoh (Mode Demo)", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                        Text(LakuStrings.get("load_demo_products", lang), fontSize = 13.sp, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -329,7 +319,7 @@ fun PosScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Tidak ada produk yang cocok dengan pencarian / kategori ini.",
+                            text = LakuStrings.get("no_matching_products", lang),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
                             fontSize = 14.sp
@@ -344,6 +334,7 @@ fun PosScreen(
                             PosProductCard(
                                 product = product,
                                 cartQuantity = cart.firstOrNull { it.product.id == product.id }?.quantity ?: 0.0,
+                                lang = lang,
                                 onAddClick = {
                                     if (product.unit.equals("kg", ignoreCase = true)) {
                                         productForKgDialog = product
@@ -352,7 +343,6 @@ fun PosScreen(
                                     }
                                 },
                                 onIncrement = {
-                                    val currentQty = cart.firstOrNull { it.product.id == product.id }?.quantity ?: 0.0
                                     viewModel.addToCart(product, 1.0)
                                 },
                                 onDecrement = {
@@ -400,7 +390,7 @@ fun PosScreen(
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
-                                    text = "${cart.size} Produk di Keranjang",
+                                    text = "${cart.size} ${LakuStrings.get("items_in_cart", lang)}",
                                     fontSize = 12.sp,
                                     color = Color.White.copy(alpha = 0.9f)
                                 )
@@ -427,7 +417,7 @@ fun PosScreen(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Keranjang",
+                                text = LakuStrings.get("cart_btn", lang),
                                 fontWeight = FontWeight.Bold,
                                 color = EmeraldGreenDark,
                                 fontSize = 13.sp
@@ -444,6 +434,7 @@ fun PosScreen(
         val kgProduct = productForKgDialog!!
         KgWeightDialog(
             product = kgProduct,
+            lang = lang,
             onDismiss = { productForKgDialog = null },
             onConfirm = { selectedWeight ->
                 viewModel.addToCart(kgProduct, selectedWeight)
@@ -464,12 +455,7 @@ fun PosScreen(
                 onClose = { showCartSheet = false },
                 onCheckout = {
                     showCartSheet = false
-                    if (!isProLicense && allTransactions.size >= com.example.util.LicenseManager.MAX_TRIAL_TRANSACTIONS) {
-                        viewModel.trialLimitDialogMessage.value = "Batas Uji Coba Tercapai!\nVersi Trial dibatasi maksimal ${com.example.util.LicenseManager.MAX_TRIAL_TRANSACTIONS} kali transaksi. Silakan aktivasi lisensi PRO untuk melanjutkan transaksi tanpa batas."
-                        viewModel.openActivationDialog()
-                    } else {
-                        onOpenCheckout()
-                    }
+                    onOpenCheckout()
                 }
             )
         }
@@ -477,6 +463,7 @@ fun PosScreen(
 
     if (showBarcodeScanner) {
         BarcodeScannerDialog(
+            lang = lang,
             onDismiss = { showBarcodeScanner = false },
             onBarcodeScanned = { scannedCode ->
                 showBarcodeScanner = false
@@ -484,10 +471,10 @@ fun PosScreen(
                 val matched = allProductsList.find { it.barcode.equals(scannedCode.trim(), ignoreCase = true) }
                 if (matched != null) {
                     viewModel.addToCart(matched, 1.0)
-                    Toast.makeText(context, "Ditambahkan: ${matched.name}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "${LakuStrings.get("added_to_cart_toast", lang)} ${matched.name}", Toast.LENGTH_SHORT).show()
                 } else {
                     viewModel.posSearchQuery.value = scannedCode.trim()
-                    Toast.makeText(context, "Barcode: $scannedCode (Tidak ada di katalog)", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "$scannedCode (${LakuStrings.get("barcode_not_found_toast", lang)})", Toast.LENGTH_LONG).show()
                 }
             }
         )
@@ -498,6 +485,7 @@ fun PosScreen(
 fun PosProductCard(
     product: Product,
     cartQuantity: Double,
+    lang: String,
     onAddClick: () -> Unit,
     onIncrement: () -> Unit,
     onDecrement: () -> Unit
@@ -518,7 +506,6 @@ fun PosProductCard(
                 .padding(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Product Image or Icon
             Box(
                 modifier = Modifier
                     .size(68.dp)
@@ -548,7 +535,6 @@ fun PosProductCard(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Details
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = product.name,
@@ -559,7 +545,7 @@ fun PosProductCard(
                 )
 
                 Text(
-                    text = "${product.category} • ${product.unit}",
+                    text = "${LakuStrings.translateCategory(product.category, lang)} • ${LakuStrings.translateUnit(product.unit, lang)}",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -574,16 +560,15 @@ fun PosProductCard(
                         color = EmeraldGreenDark
                     )
                     Text(
-                        text = "/${product.unit}",
+                        text = "/${LakuStrings.translateUnit(product.unit, lang)}",
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
-                // Stock Badge
                 if (product.isUnlimitedStock) {
                     Text(
-                        text = "Stok: Unlimited",
+                        text = LakuStrings.get("stock_unlimited_short", lang),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
                         color = EmeraldGreenPrimary
@@ -600,8 +585,8 @@ fun PosProductCard(
                             Spacer(modifier = Modifier.width(3.dp))
                         }
                         Text(
-                            text = if (product.isLowStock) "Stok menipis: ${FormatUtils.formatQty(product.stock, product.unit)}"
-                            else "Stok: ${FormatUtils.formatQty(product.stock, product.unit)}",
+                            text = if (product.isLowStock) "${LakuStrings.get("low_stock_prefix", lang)} ${FormatUtils.formatQty(product.stock, product.unit)}"
+                            else "${LakuStrings.get("stock_prefix", lang)} ${FormatUtils.formatQty(product.stock, product.unit)}",
                             fontSize = 11.sp,
                             fontWeight = if (product.isLowStock) FontWeight.Bold else FontWeight.Normal,
                             color = if (product.isLowStock) DangerRed else MaterialTheme.colorScheme.onSurfaceVariant
@@ -610,7 +595,6 @@ fun PosProductCard(
                 }
             }
 
-            // Add or Counter
             if (cartQuantity > 0.0) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -624,7 +608,7 @@ fun PosProductCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Remove,
-                            contentDescription = "Kurangi",
+                            contentDescription = LakuStrings.get("delete", lang),
                             tint = EmeraldGreenDark,
                             modifier = Modifier.size(16.dp)
                         )
@@ -644,7 +628,7 @@ fun PosProductCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Add,
-                            contentDescription = "Tambah",
+                            contentDescription = LakuStrings.get("add_btn", lang),
                             tint = EmeraldGreenDark,
                             modifier = Modifier.size(16.dp)
                         )
@@ -660,13 +644,13 @@ fun PosProductCard(
                 ) {
                     Icon(
                         imageVector = Icons.Default.AddShoppingCart,
-                        contentDescription = "Tambah",
+                        contentDescription = LakuStrings.get("add_btn", lang),
                         tint = Color.White,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = if (product.unit.equals("kg", ignoreCase = true)) "Pilih kg" else "Tambah",
+                        text = if (product.unit.equals("kg", ignoreCase = true)) LakuStrings.get("choose_kg_btn", lang) else LakuStrings.get("add_btn", lang),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -677,10 +661,10 @@ fun PosProductCard(
     }
 }
 
-// Dialog khusus produk dengan satuan "kg" (pilihan 0.25, 0.50, 1.0, 2.0 atau ketik angka custom)
 @Composable
 fun KgWeightDialog(
     product: Product,
+    lang: String,
     onDismiss: () -> Unit,
     onConfirm: (Double) -> Unit
 ) {
@@ -691,7 +675,7 @@ fun KgWeightDialog(
         onDismissRequest = onDismiss,
         title = {
             Column {
-                Text(text = "Pilih Berat Satuan (kg)", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                Text(text = LakuStrings.get("kg_dialog_title", lang), fontWeight = FontWeight.Bold, fontSize = 17.sp)
                 Text(
                     text = product.name,
                     fontSize = 13.sp,
@@ -703,12 +687,11 @@ fun KgWeightDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text = "Pilihan Cepat Kilogram:",
+                    text = LakuStrings.get("kg_quick_options", lang),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
                 )
 
-                // Quick buttons for 0.25, 0.50, 1.0, 2.0, etc.
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -770,7 +753,7 @@ fun KgWeightDialog(
                 OutlinedTextField(
                     value = customWeightText,
                     onValueChange = { customWeightText = it },
-                    label = { Text("Atau Ketik Berat (kg)") },
+                    label = { Text(LakuStrings.get("kg_custom_label", lang)) },
                     suffix = { Text("kg") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),
@@ -780,7 +763,7 @@ fun KgWeightDialog(
                 val weightVal = customWeightText.toDoubleOrNull() ?: 0.0
                 val totalEst = weightVal * product.sellingPrice
                 Text(
-                    text = "Estimasi Harga: ${FormatUtils.formatRupiah(totalEst)}",
+                    text = "${LakuStrings.get("estimated_price", lang)} ${FormatUtils.formatRupiah(totalEst)}",
                     fontWeight = FontWeight.Bold,
                     color = EmeraldGreenDark,
                     fontSize = 14.sp
@@ -797,18 +780,17 @@ fun KgWeightDialog(
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary)
             ) {
-                Text("Tambahkan", fontWeight = FontWeight.Bold, color = Color.White)
+                Text(LakuStrings.get("add_confirm", lang), fontWeight = FontWeight.Bold, color = Color.White)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Batal")
+                Text(LakuStrings.get("cancel", lang))
             }
         }
     )
 }
 
-// Cart Sheet Content with discount, customer info, and items
 @Composable
 fun CartSheetContent(
     viewModel: LakuKasirViewModel,
@@ -819,7 +801,15 @@ fun CartSheetContent(
     val cart by viewModel.cart.collectAsState()
     val customerName by viewModel.customerName.collectAsState()
     val customerPhone by viewModel.customerPhone.collectAsState()
+    val discountMode by viewModel.discountMode.collectAsState()
     val discountText by viewModel.manualDiscount.collectAsState()
+    val cartSubtotal = remember(cart) { cart.sumOf { it.subtotal } }
+    val computedDiscount = remember(cartSubtotal, discountMode, discountText) {
+        viewModel.calculateDiscountAmount(cartSubtotal, discountMode, discountText)
+    }
+    val cartTotalAfterDiscount = remember(cartSubtotal, computedDiscount) {
+        maxOf(0.0, cartSubtotal - computedDiscount)
+    }
 
     Column(
         modifier = Modifier
@@ -895,7 +885,7 @@ fun CartSheetContent(
                             },
                             modifier = Modifier.size(30.dp)
                         ) {
-                            Icon(imageVector = Icons.Default.Remove, contentDescription = "Kurang", tint = EmeraldGreenDark)
+                            Icon(imageVector = Icons.Default.Remove, contentDescription = LakuStrings.get("delete", lang), tint = EmeraldGreenDark)
                         }
 
                         Text(
@@ -912,14 +902,14 @@ fun CartSheetContent(
                             },
                             modifier = Modifier.size(30.dp)
                         ) {
-                            Icon(imageVector = Icons.Default.Add, contentDescription = "Tambah", tint = EmeraldGreenDark)
+                            Icon(imageVector = Icons.Default.Add, contentDescription = LakuStrings.get("add_btn", lang), tint = EmeraldGreenDark)
                         }
 
                         IconButton(
                             onClick = { viewModel.removeFromCart(item.product.id) },
                             modifier = Modifier.size(30.dp)
                         ) {
-                            Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = "Hapus", tint = DangerRed)
+                            Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = LakuStrings.get("delete", lang), tint = DangerRed)
                         }
                     }
                 }
@@ -928,43 +918,95 @@ fun CartSheetContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Diskon Manual, Nama Pelanggan, dan WhatsApp
+        // Discount (Manual / Percent), Customer Name, and WhatsApp
         Card(
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
         ) {
             Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Diskon Manual
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = discountMode == "manual",
+                        onClick = {
+                            if (discountMode != "manual") {
+                                viewModel.discountMode.value = "manual"
+                                viewModel.manualDiscount.value = ""
+                            }
+                        },
+                        label = { Text(LakuStrings.get("discount_mode_manual", lang), fontSize = 11.sp) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = EmeraldGreenPrimary,
+                            selectedLabelColor = Color.White
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                    FilterChip(
+                        selected = discountMode == "percent",
+                        onClick = {
+                            if (discountMode != "percent") {
+                                viewModel.discountMode.value = "percent"
+                                viewModel.manualDiscount.value = ""
+                            }
+                        },
+                        label = { Text(LakuStrings.get("discount_mode_percent", lang), fontSize = 11.sp) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = EmeraldGreenPrimary,
+                            selectedLabelColor = Color.White
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
                 OutlinedTextField(
                     value = discountText,
-                    onValueChange = { viewModel.manualDiscount.value = FormatUtils.formatInputDotted(it) },
-                    label = { Text(LakuStrings.get("manual_discount", lang)) },
+                    onValueChange = { input ->
+                        viewModel.manualDiscount.value = if (discountMode == "percent") {
+                            input.filter { it.isDigit() || it == '.' || it == ',' }.take(5)
+                        } else {
+                            FormatUtils.formatInputDotted(input)
+                        }
+                    },
+                    label = {
+                        Text(
+                            if (discountMode == "percent") LakuStrings.get("discount_percent_label", lang)
+                            else LakuStrings.get("discount_amount_label", lang)
+                        )
+                    },
                     leadingIcon = { Icon(imageVector = Icons.Default.Percent, contentDescription = null, tint = EmeraldGreenPrimary) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    prefix = if (discountMode == "manual") {
+                        { Text("${FormatUtils.currencySymbol} ") }
+                    } else null,
+                    suffix = if (discountMode == "percent") {
+                        { Text("%", fontWeight = FontWeight.Bold) }
+                    } else null,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = if (discountMode == "percent") KeyboardType.Decimal else KeyboardType.Number
+                    ),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     shape = RoundedCornerShape(10.dp)
                 )
 
-                // Nama Pelanggan (Opsional)
                 OutlinedTextField(
                     value = customerName,
                     onValueChange = { viewModel.customerName.value = it },
-                    label = { Text("Nama Pelanggan (Opsional)") },
+                    label = { Text(LakuStrings.get("customer_name_optional", lang)) },
                     leadingIcon = { Icon(imageVector = Icons.Default.Person, contentDescription = null, modifier = Modifier.size(18.dp), tint = EmeraldGreenPrimary) },
-                    placeholder = { Text("Contoh: Budi Santoso") },
+                    placeholder = { Text(LakuStrings.get("customer_name_placeholder", lang)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     shape = RoundedCornerShape(10.dp)
                 )
 
-                // Nomor WhatsApp Pelanggan (Opsional)
                 OutlinedTextField(
                     value = customerPhone,
                     onValueChange = { viewModel.customerPhone.value = it },
-                    label = { Text("No. WhatsApp (Opsional)") },
+                    label = { Text(LakuStrings.get("customer_phone_optional", lang)) },
                     leadingIcon = { Icon(imageVector = Icons.Default.Phone, contentDescription = null, modifier = Modifier.size(18.dp), tint = EmeraldGreenPrimary) },
-                    placeholder = { Text("Contoh: 08123456789") },
+                    placeholder = { Text(LakuStrings.get("whatsapp_no_placeholder", lang)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
@@ -981,16 +1023,20 @@ fun CartSheetContent(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(LakuStrings.get("subtotal", lang), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(FormatUtils.formatRupiah(viewModel.cartSubtotal), fontWeight = FontWeight.Bold)
+            Text(FormatUtils.formatRupiah(cartSubtotal), fontWeight = FontWeight.Bold)
         }
 
-        if (viewModel.discountAmount > 0) {
+        if (computedDiscount > 0) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(LakuStrings.get("discount", lang), color = DangerRed)
-                Text("- ${FormatUtils.formatRupiah(viewModel.discountAmount)}", color = DangerRed, fontWeight = FontWeight.Bold)
+                Text(
+                    if (discountMode == "percent" && discountText.isNotBlank()) "${LakuStrings.get("discount", lang)} ($discountText%)"
+                    else LakuStrings.get("discount", lang),
+                    color = DangerRed
+                )
+                Text("- ${FormatUtils.formatRupiah(computedDiscount)}", color = DangerRed, fontWeight = FontWeight.Bold)
             }
         }
 
@@ -1003,7 +1049,7 @@ fun CartSheetContent(
         ) {
             Text(LakuStrings.get("total_payment", lang), fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Text(
-                FormatUtils.formatRupiah(viewModel.totalPayable),
+                FormatUtils.formatRupiah(cartTotalAfterDiscount),
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 18.sp,
                 color = EmeraldGreenDark

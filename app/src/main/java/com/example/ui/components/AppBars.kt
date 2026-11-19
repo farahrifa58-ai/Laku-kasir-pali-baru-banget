@@ -64,10 +64,10 @@ fun AppTopBar(
     onLicenseBadgeClick: (() -> Unit)? = null
 ) {
     val isDark = MaterialTheme.colorScheme.background == DarkBackground
-    val topBarBg = if (isDark) Color(0xFF0F2744) else Color(0xFFE0F2FE) // Biru muda yang segar dan jernih
-    val topBarTitleColor = if (isDark) Color(0xFFE0F2FE) else Color(0xFF0C4A6E)
-    val topBarStoreColor = if (isDark) Color(0xFF7DD3FC) else Color(0xFF0284C7)
-    val topBarActionColor = if (isDark) Color(0xFFBAE6FD) else Color(0xFF0284C7)
+    val topBarBg = if (isDark) Color(0xFF0D2818) else Color(0xFFE8F8EE)
+    val topBarTitleColor = if (isDark) Color(0xFFDCFCE7) else Color(0xFF14532D)
+    val topBarStoreColor = if (isDark) Color(0xFF4ADE80) else Color(0xFF15803D)
+    val topBarActionColor = if (isDark) Color(0xFF86EFAC) else Color(0xFF15803D)
 
     Surface(
         shadowElevation = 2.dp,
@@ -79,33 +79,12 @@ fun AppTopBar(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(vertical = 4.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (isDark) Color(0xFF1E3A5F) else Color(0xFFBAE6FD)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (storeProfile.logoUri != null) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(storeProfile.logoUri)
-                                    .error(R.drawable.logo_laku_kasir)
-                                    .fallback(R.drawable.logo_laku_kasir)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = "Logo Toko",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.size(38.dp)
-                            )
-                        } else {
-                            Image(
-                                painter = painterResource(id = R.drawable.logo_laku_kasir),
-                                contentDescription = "Logo",
-                                modifier = Modifier.size(32.dp)
-                            )
-                        }
-                    }
+                    StoreAvatar(
+                        storeProfile = storeProfile,
+                        size = 38.dp,
+                        shape = RoundedCornerShape(8.dp),
+                        contentDescription = LakuStrings.get("store_profile", storeProfile.language)
+                    )
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -122,7 +101,7 @@ fun AppTopBar(
                             Spacer(modifier = Modifier.width(6.dp))
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
-                                color = Color(0xFF0284C7)
+                                color = EmeraldGreenPrimary
                             ) {
                                 Text(
                                     text = "PRO",
@@ -156,7 +135,7 @@ fun AppTopBar(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Settings,
-                        contentDescription = "Pengaturan",
+                        contentDescription = LakuStrings.get("settings", storeProfile.language),
                         tint = topBarActionColor
                     )
                 }

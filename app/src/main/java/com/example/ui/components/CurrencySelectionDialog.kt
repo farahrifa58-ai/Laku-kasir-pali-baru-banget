@@ -46,10 +46,12 @@ import com.example.data.model.AppCurrency
 import com.example.data.model.CurrencyCatalog
 import com.example.ui.theme.EmeraldGreenDark
 import com.example.ui.theme.EmeraldGreenPrimary
+import com.example.util.LakuStrings
 
 @Composable
 fun CurrencySelectionDialog(
     activeCode: String,
+    lang: String = "id",
     onSelect: (AppCurrency) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -76,7 +78,7 @@ fun CurrencySelectionDialog(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     Icon(
                         imageVector = Icons.Default.MonetizationOn,
                         contentDescription = null,
@@ -84,13 +86,15 @@ fun CurrencySelectionDialog(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Pilih Mata Uang",
+                        text = LakuStrings.get("choose_currency_title", lang),
                         fontWeight = FontWeight.Bold,
-                        fontSize = 17.sp
+                        fontSize = 17.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
                 IconButton(onClick = onDismiss) {
-                    Icon(imageVector = Icons.Default.Close, contentDescription = "Tutup")
+                    Icon(imageVector = Icons.Default.Close, contentDescription = LakuStrings.get("close", lang))
                 }
             }
         },
@@ -99,20 +103,15 @@ fun CurrencySelectionDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Search Input
-                OutlinedTextField(
+                CompactSearchBar(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text("Cari negara, mata uang, kode (cth: Dolar, Rusia, EUR)...", fontSize = 12.sp) },
-                    leadingIcon = {
-                        Icon(imageVector = Icons.Default.Search, contentDescription = null, tint = EmeraldGreenPrimary)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    shape = RoundedCornerShape(10.dp)
+                    placeholder = LakuStrings.get("search_currency_placeholder", lang),
+                    searchContentDescription = LakuStrings.get("search", lang),
+                    clearContentDescription = LakuStrings.get("clear", lang),
+                    modifier = Modifier.fillMaxWidth()
                 )
 
-                // Region Chips
                 LazyRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -122,7 +121,13 @@ fun CurrencySelectionDialog(
                         FilterChip(
                             selected = isSelected,
                             onClick = { selectedRegion = region },
-                            label = { Text(region, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
+                            label = {
+                                Text(
+                                    LakuStrings.translateRegion(region, lang),
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = EmeraldGreenPrimary,
                                 selectedLabelColor = Color.White
@@ -134,7 +139,6 @@ fun CurrencySelectionDialog(
 
                 HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
 
-                // Currency List
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -187,7 +191,7 @@ fun CurrencySelectionDialog(
                                             }
                                         }
                                         Text(
-                                            text = "${curr.country} • Simbol: ${curr.symbol} • ${curr.region}",
+                                            text = "${curr.country} • ${LakuStrings.get("symbol_label", lang)}: ${curr.symbol} • ${LakuStrings.translateRegion(curr.region, lang)}",
                                             fontSize = 11.sp,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -197,7 +201,7 @@ fun CurrencySelectionDialog(
                                 if (isSelected) {
                                     Icon(
                                         imageVector = Icons.Default.CheckCircle,
-                                        contentDescription = "Dipilih",
+                                        contentDescription = LakuStrings.get("selected", lang),
                                         tint = EmeraldGreenPrimary,
                                         modifier = Modifier.size(20.dp)
                                     )
@@ -210,7 +214,7 @@ fun CurrencySelectionDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Tutup", fontWeight = FontWeight.Bold)
+                Text(LakuStrings.get("close", lang), fontWeight = FontWeight.Bold)
             }
         }
     )

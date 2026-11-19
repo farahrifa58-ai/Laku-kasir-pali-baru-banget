@@ -1,10 +1,9 @@
 package com.example.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,7 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.PictureAsPdf
@@ -40,7 +38,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -51,34 +48,31 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
-import com.example.R
 import com.example.data.model.StoreProfile
 import com.example.data.model.Transaction
-import com.example.ui.Screen
+import com.example.ui.components.StoreAvatar
 import com.example.ui.theme.EmeraldGreenDark
 import com.example.ui.theme.EmeraldGreenPrimary
 import com.example.ui.theme.StatusDebt
 import com.example.ui.theme.StatusPaid
+import com.example.util.BluetoothPrinterHelper
 import com.example.util.FormatUtils
 import com.example.util.LakuStrings
 import com.example.util.ReceiptExportHelper
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,51 +84,12 @@ fun ReceiptScreen(
     onNewTransaction: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var showShareBottomSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    // Build receipt share text
-    val receiptText = remember(transaction, storeProfile) {
-        buildString {
-            appendLine("===============================")
-            appendLine("       ${storeProfile.storeName.uppercase()}")
-            appendLine("   Owner: ${storeProfile.ownerName}")
-            appendLine("   ${storeProfile.address}")
-            appendLine("   WA: ${storeProfile.phone}")
-            appendLine("===============================")
-            appendLine("No Transaksi: ${transaction.transactionCode}")
-            appendLine("Tanggal     : ${FormatUtils.formatDateTime(transaction.timestamp)}")
-            if (transaction.customerName.isNotBlank()) {
-                appendLine("Pelanggan   : ${transaction.customerName}")
-            }
-            if (transaction.customerPhone.isNotBlank()) {
-                appendLine("No HP       : ${transaction.customerPhone}")
-            }
-            appendLine("-------------------------------")
-            transaction.items.forEach { item ->
-                appendLine("${item.productName}")
-                appendLine("  ${FormatUtils.formatQty(item.quantity, item.unit)} x ${FormatUtils.formatRupiah(item.sellingPrice)} = ${FormatUtils.formatRupiah(item.subtotal)}")
-            }
-            appendLine("-------------------------------")
-            appendLine("Subtotal    : ${FormatUtils.formatRupiah(transaction.subtotal)}")
-            if (transaction.discount > 0) {
-                appendLine("Diskon      : -${FormatUtils.formatRupiah(transaction.discount)}")
-            }
-            if (transaction.ppnAmount > 0) {
-                appendLine("PPN         : +${FormatUtils.formatRupiah(transaction.ppnAmount)}")
-            }
-            appendLine("TOTAL       : ${FormatUtils.formatRupiah(transaction.total)}")
-            appendLine("Metode      : ${transaction.paymentMethod}")
-            if (transaction.paymentMethod == "Tunai") {
-                appendLine("Diterima    : ${FormatUtils.formatRupiah(transaction.cashReceived)}")
-                appendLine("Kembalian   : ${FormatUtils.formatRupiah(transaction.changeAmount)}")
-            }
-            appendLine("Status      : ${if (transaction.isPaid) "LUNAS" else "KASBON / BELUM LUNAS"}")
-            appendLine("===============================")
-            appendLine("${storeProfile.receiptNotes}")
-            appendLine("===============================")
-            appendLine("Dibuat dengan Laku Kasir Pro")
-        }
+    val receiptText = remember(transaction, storeProfile, lang) {
+        BluetoothPrinterHelper.buildEscPosReceiptText(transaction, storeProfile)
     }
 
     Scaffold(
@@ -143,21 +98,21 @@ fun ReceiptScreen(
                 title = { Text(LakuStrings.get("receipt", lang), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack, modifier = Modifier.testTag("receipt_back_button")) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = LakuStrings.get("back", lang))
                     }
                 },
                 actions = {
                     IconButton(onClick = {
                         showShareBottomSheet = true
-                    }, modifier = Modifier.testTag("receipt_share_button")) {
-                        Icon(imageVector = Icons.Default.Share, contentDescription = "Bagikan")
+                    }, modifier = Modifier.testTag("receipt_share_top_button")) {
+                        Icon(imageVector = Icons.Default.Share, contentDescription = LakuStrings.get("share", lang))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFFE0F2FE), // Soft light blue header
-                    titleContentColor = Color(0xFF0C4A6E),
-                    navigationIconContentColor = Color(0xFF0369A1),
-                    actionIconContentColor = Color(0xFF0369A1)
+                    containerColor = if (MaterialTheme.colorScheme.background == com.example.ui.theme.DarkBackground) Color(0xFF0D2818) else Color(0xFFE8F8EE),
+                    titleContentColor = if (MaterialTheme.colorScheme.background == com.example.ui.theme.DarkBackground) Color(0xFFDCFCE7) else Color(0xFF14532D),
+                    navigationIconContentColor = if (MaterialTheme.colorScheme.background == com.example.ui.theme.DarkBackground) Color(0xFF86EFAC) else Color(0xFF15803D),
+                    actionIconContentColor = if (MaterialTheme.colorScheme.background == com.example.ui.theme.DarkBackground) Color(0xFF86EFAC) else Color(0xFF15803D)
                 )
             )
         }
@@ -185,79 +140,79 @@ fun ReceiptScreen(
                     modifier = Modifier.padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Logo Toko yang Rapi: Rounded rectangle dengan border halus dan proporsional
-                    Box(
-                        modifier = Modifier
-                            .size(76.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f), RoundedCornerShape(14.dp))
-                            .background(Color(0xFFF8FAFC)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (storeProfile.logoUri != null) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(context)
-                                    .data(storeProfile.logoUri)
-                                    .error(R.drawable.logo_laku_kasir)
-                                    .fallback(R.drawable.logo_laku_kasir)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = "Logo Toko Struk",
-                                contentScale = ContentScale.Fit,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(4.dp)
-                                    .clip(RoundedCornerShape(10.dp))
+                    if (storeProfile.showStoreLogoOnReceipt) {
+                        StoreAvatar(
+                            storeProfile = storeProfile,
+                            size = 76.dp,
+                            shape = RoundedCornerShape(14.dp),
+                            contentDescription = LakuStrings.get("store_profile", lang),
+                            modifier = Modifier.border(
+                                1.dp,
+                                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.8f),
+                                RoundedCornerShape(14.dp)
                             )
-                        } else {
-                            Image(
-                                painter = painterResource(id = R.drawable.logo_laku_kasir),
-                                contentDescription = "Logo Toko",
-                                modifier = Modifier.size(60.dp)
-                            )
-                        }
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
                     }
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                    if (storeProfile.showStoreNameOnReceipt && storeProfile.storeName.isNotBlank()) {
+                        Text(
+                            text = storeProfile.storeName,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 19.sp,
+                            color = EmeraldGreenDark,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                    }
 
-                    // Nama Toko, Pemilik, Alamat, Nomor WhatsApp dengan jarak yang lapang
-                    Text(
-                        text = storeProfile.storeName,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 19.sp,
-                        color = EmeraldGreenDark,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Pemilik: ${storeProfile.ownerName}",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = storeProfile.address,
-                        fontSize = 12.sp,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "WA: ${storeProfile.phone}",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    if (storeProfile.showCashierNameOnReceipt && storeProfile.ownerName.isNotBlank()) {
+                        Text(
+                            text = "${LakuStrings.get("cashier_label", lang)}: ${storeProfile.ownerName}",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    if (storeProfile.showStoreAddressOnReceipt && storeProfile.address.isNotBlank()) {
+                        Text(
+                            text = storeProfile.address,
+                            fontSize = 12.sp,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    if (storeProfile.showStorePhoneOnReceipt && storeProfile.phone.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "WA: ${storeProfile.phone}",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    if (storeProfile.showOperatingHoursOnReceipt && storeProfile.operatingHours.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "${LakuStrings.get("hours_label", lang)}: ${storeProfile.operatingHours}",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = EmeraldGreenPrimary
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(14.dp))
                     HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // Detail Transaksi
+                    // Transaction Metadata
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("No. Struk", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(LakuStrings.get("receipt_no", lang), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(transaction.transactionCode, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
 
@@ -265,26 +220,26 @@ fun ReceiptScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Tanggal", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(FormatUtils.formatDateTime(transaction.timestamp), fontSize = 12.sp)
+                        Text(LakuStrings.get("receipt_date", lang), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(FormatUtils.formatDateTime(transaction.timestamp, lang), fontSize = 12.sp)
                     }
 
-                    if (transaction.customerName.isNotBlank()) {
+                    if (storeProfile.showCustomerNameOnReceipt && transaction.customerName.isNotBlank()) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Pelanggan", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(LakuStrings.get("receipt_customer", lang), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(transaction.customerName, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
 
-                    if (transaction.customerPhone.isNotBlank()) {
+                    if (storeProfile.showCustomerNameOnReceipt && transaction.customerPhone.isNotBlank()) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("No. WhatsApp", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(LakuStrings.get("receipt_phone", lang), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(transaction.customerPhone, fontSize = 12.sp)
                         }
                     }
@@ -293,9 +248,9 @@ fun ReceiptScreen(
                     HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // Rincian Barang
+                    // Items Header
                     Text(
-                        text = "RINCIAN BARANG",
+                        text = LakuStrings.get("receipt_items_header", lang),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -338,12 +293,11 @@ fun ReceiptScreen(
                     HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // Rincian Subtotal, Diskon, PPN, dan Total
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Subtotal", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(LakuStrings.get("subtotal", lang), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(FormatUtils.formatRupiah(transaction.subtotal), fontSize = 12.sp)
                     }
 
@@ -352,7 +306,7 @@ fun ReceiptScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Diskon", fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
+                            Text(LakuStrings.get("discount", lang), fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
                             Text("- ${FormatUtils.formatRupiah(transaction.discount)}", fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
                         }
                     }
@@ -362,7 +316,8 @@ fun ReceiptScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(if (transaction.ppnRate > 0) "PPN (${transaction.ppnRate.toInt()}%)" else "PPN", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            val ppnLabel = if (transaction.ppnRate > 0) "${LakuStrings.get("ppn_label", lang)} (${transaction.ppnRate.toInt()}%)" else LakuStrings.get("ppn_label", lang)
+                            Text(ppnLabel, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text("+ ${FormatUtils.formatRupiah(transaction.ppnAmount)}", fontSize = 12.sp)
                         }
                     }
@@ -371,14 +326,13 @@ fun ReceiptScreen(
                     HorizontalDivider(thickness = 2.dp, color = EmeraldGreenPrimary)
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // TOTAL BESAR
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "TOTAL",
+                            text = LakuStrings.get("receipt_total", lang),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = EmeraldGreenDark
@@ -393,13 +347,12 @@ fun ReceiptScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Metode Bayar & Kembalian
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Metode Bayar", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(transaction.paymentMethod, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text(LakuStrings.get("receipt_method", lang), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(LakuStrings.translatePaymentMethod(transaction.paymentMethod, lang), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     }
 
                     if (transaction.paymentMethod == "Tunai") {
@@ -407,26 +360,25 @@ fun ReceiptScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Tunai Diterima", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(LakuStrings.get("receipt_cash_received", lang), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(FormatUtils.formatRupiah(transaction.cashReceived), fontSize = 12.sp)
                         }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Kembalian", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text(LakuStrings.get("change", lang), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             Text(FormatUtils.formatRupiah(transaction.changeAmount), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = EmeraldGreenDark)
                         }
                     }
 
-                    // Status Badge
                     Spacer(modifier = Modifier.height(8.dp))
                     Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = if (transaction.isPaid) StatusPaid.copy(alpha = 0.12f) else StatusDebt.copy(alpha = 0.12f)
                     ) {
                         Text(
-                            text = if (transaction.isPaid) "LUNAS" else "KASBON (BELUM LUNAS)",
+                            text = if (transaction.isPaid) LakuStrings.get("paid_badge", lang) else LakuStrings.get("debt_badge_full", lang),
                             color = if (transaction.isPaid) StatusPaid else StatusDebt,
                             fontWeight = FontWeight.ExtraBold,
                             fontSize = 12.sp,
@@ -438,43 +390,27 @@ fun ReceiptScreen(
                     HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // Pesan Terima Kasih
-                    Text(
-                        text = storeProfile.receiptNotes,
-                        fontSize = 12.sp,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 16.sp
-                    )
+                    if (storeProfile.receiptNotes.isNotBlank()) {
+                        Text(
+                            text = storeProfile.receiptNotes,
+                            fontSize = 12.sp,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 16.sp
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Laku Kasir Pro v1.1",
+                        text = "${LakuStrings.get("app_title", lang)} • ${LakuStrings.get("version", lang)}",
                         fontSize = 10.sp,
                         color = MaterialTheme.colorScheme.outline,
                         fontWeight = FontWeight.Medium
                     )
-
-                    if (!com.example.util.LicenseManager.isProActivated()) {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = Color(0xFFFFF3E0),
-                            border = BorderStroke(1.dp, Color(0xFFFFB74D))
-                        ) {
-                            Text(
-                                text = "MODE UJI COBA (TRIAL VERSION)",
-                                color = Color(0xFFE65100),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                            )
-                        }
-                    }
                 }
             }
 
-            // AKSI CETAK & BAGIKAN STRUK MINIMALIS: CUMA 2 BUTTON
+            // Receipt Actions Card
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -486,7 +422,7 @@ fun ReceiptScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = if (lang == "en") "Receipt Actions" else "Aksi Cetak & Bagikan Struk",
+                        text = LakuStrings.get("receipt_actions", lang),
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
                         color = EmeraldGreenDark
@@ -496,10 +432,25 @@ fun ReceiptScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        // Button 1: Cetak Struk
                         Button(
                             onClick = {
-                                ReceiptExportHelper.printReceipt(context, transaction, storeProfile)
+                                if (storeProfile.printerAddress.isNotBlank() && BluetoothPrinterHelper.hasBluetoothPermission(context)) {
+                                    scope.launch {
+                                        val printed = BluetoothPrinterHelper.printRawText(
+                                            context = context,
+                                            printerAddress = storeProfile.printerAddress,
+                                            content = receiptText
+                                        )
+                                        if (printed) {
+                                            Toast.makeText(context, LakuStrings.get("test_print_success", lang), Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(context, LakuStrings.get("test_print_failed", lang), Toast.LENGTH_SHORT).show()
+                                            ReceiptExportHelper.printReceipt(context, transaction, storeProfile)
+                                        }
+                                    }
+                                } else {
+                                    ReceiptExportHelper.printReceipt(context, transaction, storeProfile)
+                                }
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenDark),
                             shape = RoundedCornerShape(12.dp),
@@ -510,23 +461,22 @@ fun ReceiptScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Print,
-                                contentDescription = "Cetak",
+                                contentDescription = LakuStrings.get("print_btn", lang),
                                 tint = Color.White,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = if (lang == "en") "Print" else "Cetak Struk",
+                                text = LakuStrings.get("print_btn", lang),
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
                                 fontSize = 14.sp
                             )
                         }
 
-                        // Button 2: Bagikan Struk (Share)
                         Button(
                             onClick = { showShareBottomSheet = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)), // Ocean Sky Blue
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .weight(1f)
@@ -535,13 +485,13 @@ fun ReceiptScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Share,
-                                contentDescription = "Bagikan",
+                                contentDescription = LakuStrings.get("share_btn", lang),
                                 tint = Color.White,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = if (lang == "en") "Share" else "Bagikan Struk",
+                                text = LakuStrings.get("share_btn", lang),
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
                                 fontSize = 14.sp
@@ -551,7 +501,6 @@ fun ReceiptScreen(
                 }
             }
 
-            // Tombol Transaksi Baru
             Button(
                 onClick = onNewTransaction,
                 colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary),
@@ -575,7 +524,6 @@ fun ReceiptScreen(
         }
     }
 
-    // Modal Bottom Sheet untuk Pilihan Bagikan & Unduh Struk
     if (showShareBottomSheet) {
         ModalBottomSheet(
             onDismissRequest = { showShareBottomSheet = false },
@@ -590,7 +538,6 @@ fun ReceiptScreen(
                     .padding(bottom = 28.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Header Sheet
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -612,12 +559,12 @@ fun ReceiptScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = if (lang == "en") "Share & Download Receipt" else "Bagikan & Unduh Struk",
+                            text = LakuStrings.get("share_download_title", lang),
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp
                         )
                         Text(
-                            text = if (lang == "en") "Select format to send or save" else "Pilih format untuk dikirim atau disimpan",
+                            text = LakuStrings.get("share_download_subtitle", lang),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -626,38 +573,39 @@ fun ReceiptScreen(
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
-                // 1. Kirim Struk ke WhatsApp (Gambar)
                 ShareOptionItem(
-                    title = if (transaction.customerPhone.isNotBlank()) "Kirim Struk ke WhatsApp (${transaction.customerPhone})" else "Kirim Struk ke WhatsApp",
-                    subtitle = "Kirim gambar struk lengkap langsung ke chat WhatsApp",
+                    title = if (transaction.customerPhone.isNotBlank()) {
+                        "${LakuStrings.get("share_wa_image_title", lang)} (${transaction.customerPhone})"
+                    } else {
+                        LakuStrings.get("share_wa_image_title", lang)
+                    },
+                    subtitle = LakuStrings.get("share_wa_image_desc", lang),
                     icon = Icons.Default.Send,
                     iconTint = Color.White,
                     iconBackground = Color(0xFF25D366),
                     onClick = {
-                        val caption = "Struk pembelian ${storeProfile.storeName} (${transaction.transactionCode}) - Total: ${FormatUtils.formatRupiah(transaction.total)}"
+                        val caption = "${LakuStrings.get("receipt", lang)} ${storeProfile.storeName} (${transaction.transactionCode}) - ${LakuStrings.get("receipt_total", lang)}: ${FormatUtils.formatRupiah(transaction.total)}"
                         ReceiptExportHelper.shareReceiptImageToWhatsApp(context, transaction, storeProfile, caption)
                         showShareBottomSheet = false
                     }
                 )
 
-                // 2. Kirim Dokumen PDF ke WhatsApp
                 ShareOptionItem(
-                    title = "Kirim Dokumen PDF ke WhatsApp",
-                    subtitle = "Kirim file dokumen PDF resmi via WhatsApp",
+                    title = LakuStrings.get("share_wa_pdf_title", lang),
+                    subtitle = LakuStrings.get("share_wa_pdf_desc", lang),
                     icon = Icons.Default.PictureAsPdf,
                     iconTint = Color.White,
                     iconBackground = Color(0xFF1E7E34),
                     onClick = {
-                        val caption = "Struk PDF ${storeProfile.storeName} (${transaction.transactionCode}) - Total: ${FormatUtils.formatRupiah(transaction.total)}"
+                        val caption = "${LakuStrings.get("receipt", lang)} PDF ${storeProfile.storeName} (${transaction.transactionCode}) - ${LakuStrings.get("receipt_total", lang)}: ${FormatUtils.formatRupiah(transaction.total)}"
                         ReceiptExportHelper.shareReceiptPdfToWhatsApp(context, transaction, storeProfile, caption)
                         showShareBottomSheet = false
                     }
                 )
 
-                // 3. Unduh Foto / Gambar Struk
                 ShareOptionItem(
-                    title = "Unduh Foto / Gambar Struk",
-                    subtitle = "Simpan gambar struk ke Galeri / folder Pictures",
+                    title = LakuStrings.get("download_image_title", lang),
+                    subtitle = LakuStrings.get("download_image_desc", lang),
                     icon = Icons.Default.Image,
                     iconTint = Color.White,
                     iconBackground = EmeraldGreenDark,
@@ -667,10 +615,9 @@ fun ReceiptScreen(
                     }
                 )
 
-                // 4. Unduh Dokumen PDF
                 ShareOptionItem(
-                    title = "Unduh Dokumen PDF",
-                    subtitle = "Simpan file PDF struk ke folder Download perangkat",
+                    title = LakuStrings.get("download_pdf_title", lang),
+                    subtitle = LakuStrings.get("download_pdf_desc", lang),
                     icon = Icons.Default.Download,
                     iconTint = Color.White,
                     iconBackground = Color(0xFF0284C7),
@@ -680,15 +627,14 @@ fun ReceiptScreen(
                     }
                 )
 
-                // 5. Bagikan Format Teks Struk
                 ShareOptionItem(
-                    title = "Bagikan Format Teks Struk",
-                    subtitle = "Kirim atau salin teks struk ke aplikasi lain",
+                    title = LakuStrings.get("share_text_title", lang),
+                    subtitle = LakuStrings.get("share_text_desc", lang),
                     icon = Icons.Default.Share,
                     iconTint = MaterialTheme.colorScheme.onSurface,
                     iconBackground = MaterialTheme.colorScheme.surfaceVariant,
                     onClick = {
-                        FormatUtils.shareText(context, "Struk ${transaction.transactionCode}", receiptText)
+                        FormatUtils.shareText(context, "${LakuStrings.get("receipt", lang)} ${transaction.transactionCode}", receiptText)
                         showShareBottomSheet = false
                     }
                 )

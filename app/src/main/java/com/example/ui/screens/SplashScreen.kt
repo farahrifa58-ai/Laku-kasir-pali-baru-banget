@@ -36,10 +36,12 @@ import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.ui.theme.EmeraldGreenDark
 import com.example.ui.theme.EmeraldGreenPrimary
+import com.example.util.LakuStrings
 import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(
+    lang: String = "id",
     onContinue: () -> Unit
 ) {
     LaunchedEffect(Unit) {
@@ -47,7 +49,6 @@ fun SplashScreen(
         onContinue()
     }
 
-    // Background langsung tampil warna hijau dan putih
     val backgroundBrush = Brush.verticalGradient(
         colors = listOf(
             Color(0xFFE8F5E9), // Mint green
@@ -68,7 +69,6 @@ fun SplashScreen(
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.padding(24.dp)
         ) {
-            // Logo di tengah
             Card(
                 modifier = Modifier
                     .size(175.dp)
@@ -84,7 +84,7 @@ fun SplashScreen(
                 ) {
                     Image(
                         painter = painterResource(id = R.drawable.logo_laku_kasir),
-                        contentDescription = "Logo Laku Kasir Pro",
+                        contentDescription = LakuStrings.get("app_title", lang),
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -92,9 +92,8 @@ fun SplashScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Di bawah logo ada tulisan Laku Kasir
             Text(
-                text = "Laku Kasir",
+                text = LakuStrings.get("app_name_short", lang),
                 fontSize = 32.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = EmeraldGreenDark,
@@ -103,9 +102,8 @@ fun SplashScreen(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Di bawahnya lagi by Rafline Dev
             Text(
-                text = "by Rafline Dev",
+                text = LakuStrings.get("by_rafline", lang),
                 fontSize = 17.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = Color(0xFF334155),
@@ -114,14 +112,13 @@ fun SplashScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Dan bawah lagi versi 1.1
             Surface(
                 shape = CircleShape,
                 color = EmeraldGreenPrimary.copy(alpha = 0.12f),
                 modifier = Modifier.padding(horizontal = 8.dp)
             ) {
                 Text(
-                    text = "versi 1.1",
+                    text = LakuStrings.get("version", lang),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     color = EmeraldGreenDark,
@@ -131,7 +128,6 @@ fun SplashScreen(
 
             Spacer(modifier = Modifier.height(48.dp))
 
-            // Button masuk kasir
             Button(
                 onClick = onContinue,
                 colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary),
@@ -139,7 +135,7 @@ fun SplashScreen(
                 modifier = Modifier.testTag("splash_continue_button")
             ) {
                 Text(
-                    text = "Buka Kasir",
+                    text = LakuStrings.get("open_cashier", lang),
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
                     color = Color.White
@@ -147,7 +143,7 @@ fun SplashScreen(
                 Spacer(modifier = Modifier.size(8.dp))
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = "Lanjut",
+                    contentDescription = LakuStrings.get("open_cashier", lang),
                     tint = Color.White
                 )
             }

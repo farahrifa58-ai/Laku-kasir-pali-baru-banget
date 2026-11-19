@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ShowChart
@@ -32,6 +35,7 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -161,28 +165,39 @@ fun DashboardScreen(
         ) {
             // Filter Periode Tabs
             item {
-                Row(
+                val periods = listOf(
+                    "today" to LakuStrings.get("period_today", lang),
+                    "week" to LakuStrings.get("period_week", lang),
+                    "month" to LakuStrings.get("period_month", lang),
+                    "all" to LakuStrings.get("period_all", lang)
+                )
+                LazyRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    val periods = listOf(
-                        "today" to LakuStrings.get("period_today", lang),
-                        "week" to LakuStrings.get("period_week", lang),
-                        "month" to LakuStrings.get("period_month", lang),
-                        "all" to LakuStrings.get("period_all", lang)
-                    )
-                    periods.forEach { (key, label) ->
+                    items(periods) { (key, label) ->
                         val isSelected = selectedPeriod == key
-                        FilterChip(
-                            selected = isSelected,
+                        Surface(
                             onClick = { viewModel.dashboardPeriod.value = key },
-                            label = { Text(label, fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = EmeraldGreenPrimary,
-                                selectedLabelColor = Color.White
-                            ),
-                            shape = RoundedCornerShape(12.dp)
-                        )
+                            shape = RoundedCornerShape(20.dp),
+                            color = if (isSelected) EmeraldGreenPrimary else MaterialTheme.colorScheme.surface,
+                            border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            modifier = Modifier.height(36.dp)
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.padding(horizontal = 14.dp)
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -250,7 +265,7 @@ fun DashboardScreen(
                         MetricCard(
                             title = LakuStrings.get("store_expense", lang),
                             value = FormatUtils.formatRupiah(biayaPengeluaran),
-                            subtitle = "${filteredExpenses.size} catatan • Ketuk untuk kelola",
+                            subtitle = "${filteredExpenses.size} ${LakuStrings.get("records_tap_manage", lang)}",
                             icon = Icons.Default.MoneyOff,
                             cardColor = MaterialTheme.colorScheme.surface,
                             textColor = MaterialTheme.colorScheme.onSurface,
@@ -262,7 +277,7 @@ fun DashboardScreen(
                         MetricCard(
                             title = LakuStrings.get("stock_asset", lang),
                             value = FormatUtils.formatRupiah(nilaiAsetStok),
-                            subtitle = "Total nilai gudang",
+                            subtitle = LakuStrings.get("total_warehouse_value", lang),
                             icon = Icons.Default.Inventory2,
                             cardColor = MaterialTheme.colorScheme.surface,
                             textColor = MaterialTheme.colorScheme.onSurface,
@@ -288,13 +303,13 @@ fun DashboardScreen(
                             Icon(imageVector = Icons.AutoMirrored.Filled.ShowChart, contentDescription = null, tint = EmeraldGreenPrimary)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Grafik Tren Penjualan",
+                                text = LakuStrings.get("sales_trend_chart", lang),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp
                             )
                         }
                         Text(
-                            text = "Ringkasan pemasukan harian toko Anda",
+                            text = LakuStrings.get("daily_income_summary", lang),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -302,7 +317,7 @@ fun DashboardScreen(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         // Render Canvas Bar Chart for last 7 days
-                        SalesBarChart(transactions = transactions)
+                        SalesBarChart(transactions = transactions, lang = lang)
                     }
                 }
             }
@@ -317,7 +332,7 @@ fun DashboardScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = "Penjualan Berdasarkan Kategori",
+                            text = LakuStrings.get("sales_by_category", lang),
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp
                         )
@@ -331,7 +346,7 @@ fun DashboardScreen(
 
                         if (categoryTotals.isEmpty()) {
                             Text(
-                                text = "Belum ada data transaksi untuk kategori.",
+                                text = LakuStrings.get("no_category_data", lang),
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -344,7 +359,7 @@ fun DashboardScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        Text(text = cat, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                        Text(text = LakuStrings.translateCategory(cat, lang), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                                         Text(text = FormatUtils.formatRupiah(total), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = EmeraldGreenDark)
                                     }
                                     Spacer(modifier = Modifier.height(4.dp))
@@ -432,10 +447,11 @@ fun MetricCard(
 }
 
 @Composable
-fun SalesBarChart(transactions: List<Transaction>) {
+fun SalesBarChart(transactions: List<Transaction>, lang: String = "id") {
     // Group sales by the last 7 days
-    val sdfDay = SimpleDateFormat("dd/MM", Locale.getDefault())
-    val sdfKey = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
+    val locale = LakuStrings.localeFor(lang)
+    val sdfDay = SimpleDateFormat("dd/MM", locale)
+    val sdfKey = SimpleDateFormat("yyyyMMdd", Locale.US)
 
     val daysList = (6 downTo 0).map { dayOffset ->
         val c = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -dayOffset) }

@@ -47,11 +47,13 @@ import com.example.data.model.AppLanguage
 import com.example.data.model.LanguageCatalog
 import com.example.ui.theme.EmeraldGreenDark
 import com.example.ui.theme.EmeraldGreenPrimary
+import com.example.util.LakuStrings
 
 @Composable
 fun LanguageSelectionDialog(
-    activeCode: String,
-    onSelect: (AppLanguage) -> Unit,
+    activeLanguageCode: String,
+    uiLang: String = activeLanguageCode,
+    onSelectLanguage: (AppLanguage) -> Unit,
     onDismiss: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
@@ -77,7 +79,7 @@ fun LanguageSelectionDialog(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     Icon(
                         imageVector = Icons.Default.Language,
                         contentDescription = null,
@@ -86,13 +88,15 @@ fun LanguageSelectionDialog(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Pilih Bahasa Aplikasi",
+                        text = LakuStrings.get("choose_language_title", uiLang),
                         fontWeight = FontWeight.Bold,
-                        fontSize = 17.sp
+                        fontSize = 17.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
                 IconButton(onClick = onDismiss) {
-                    Icon(imageVector = Icons.Default.Close, contentDescription = "Tutup")
+                    Icon(imageVector = Icons.Default.Close, contentDescription = LakuStrings.get("close", uiLang))
                 }
             }
         },
@@ -101,22 +105,17 @@ fun LanguageSelectionDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Search box
-                OutlinedTextField(
+                CompactSearchBar(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text("Cari bahasa atau negara...", fontSize = 13.sp) },
-                    leadingIcon = {
-                        Icon(imageVector = Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp))
-                    },
+                    placeholder = LakuStrings.get("search_language_placeholder", uiLang),
+                    searchContentDescription = LakuStrings.get("search", uiLang),
+                    clearContentDescription = LakuStrings.get("clear", uiLang),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .testTag("search_language_input"),
-                    singleLine = true,
-                    shape = RoundedCornerShape(10.dp)
+                        .testTag("search_language_input")
                 )
 
-                // Region filter chips (Asia Tenggara, Asia, Eropa, Rusia, Amerika, Afrika)
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -126,7 +125,13 @@ fun LanguageSelectionDialog(
                         FilterChip(
                             selected = isSelected,
                             onClick = { selectedRegion = region },
-                            label = { Text(region, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
+                            label = {
+                                Text(
+                                    LakuStrings.translateRegion(region, uiLang),
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = EmeraldGreenPrimary,
                                 selectedLabelColor = Color.White
@@ -137,7 +142,6 @@ fun LanguageSelectionDialog(
 
                 HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
 
-                // Languages List
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -145,10 +149,10 @@ fun LanguageSelectionDialog(
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     items(filteredLanguages) { item ->
-                        val isCurrent = item.code.equals(activeCode, ignoreCase = true)
+                        val isCurrent = item.code.equals(activeLanguageCode, ignoreCase = true)
                         Surface(
                             onClick = {
-                                onSelect(item)
+                                onSelectLanguage(item)
                                 onDismiss()
                             },
                             shape = RoundedCornerShape(10.dp),
@@ -214,7 +218,7 @@ fun LanguageSelectionDialog(
                                 if (isCurrent) {
                                     Icon(
                                         imageVector = Icons.Default.CheckCircle,
-                                        contentDescription = "Terpilih",
+                                        contentDescription = LakuStrings.get("selected", uiLang),
                                         tint = EmeraldGreenPrimary,
                                         modifier = Modifier.size(20.dp)
                                     )
@@ -227,7 +231,7 @@ fun LanguageSelectionDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Tutup", color = EmeraldGreenPrimary, fontWeight = FontWeight.Bold)
+                Text(LakuStrings.get("close", uiLang), color = EmeraldGreenPrimary, fontWeight = FontWeight.Bold)
             }
         },
         shape = RoundedCornerShape(16.dp)
