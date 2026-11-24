@@ -34,5 +34,5 @@ data class StoreProfile(
     val themeMode: String = "light",      // "light", "dark", "system"
     val language: String = "id",
     val currencyCode: String = "IDR",
-    val appVersion: String = "1.1"
+    val appVersion: String = "1.2"
 )

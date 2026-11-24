@@ -1,0 +1,59 @@
+{
+  "entities": {
+    "ActivationCode": {
+      "title": "ActivationCode",
+      "description": "One-time single-device license activation code for Laku Kasir POS. Managed by admin and claimed once by a device for permanent offline usage with automatic Device ID restore on reinstall.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Optional activation code string when stored inside an auto-ID document (e.g., RAFDEF-GGCU-594V)."
+        },
+        "appId": {
+          "type": "string",
+          "description": "Optional target application identifier (e.g., laku-kasir or com.aistudio.lakukasir.pro). Ignored when empty."
+        },
+        "appName": {
+          "type": "string",
+          "description": "Optional human-readable target application name."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["available", "used"],
+          "description": "Activation lifecycle state: available before purchase claim, used permanently once activated."
+        },
+        "usedByBusinessName": {
+          "type": "string",
+          "description": "Registered store or business name entered during first-time activation."
+        },
+        "registeredDeviceId": {
+          "type": "string",
+          "description": "Unique hardware/app-scoped Device ID locked to this license for auto-restore on reinstall."
+        },
+        "usedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the activation code was claimed."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the admin generated this activation code."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional admin notes for buyer tracking."
+        }
+      },
+      "required": ["status"]
+    }
+  },
+  "firestore": {
+    "/activation_codes/{codeId}": {
+      "schema": {
+        "$ref": "#/entities/ActivationCode"
+      },
+      "description": "One-time 1-device activation codes keyed either by activation code ID or auto-ID with a 'code' field."
+    }
+  }
+}

@@ -43,7 +43,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -74,10 +74,16 @@ import com.example.data.model.Expense
 import com.example.data.model.StoreProfile
 import com.example.ui.LakuKasirViewModel
 import com.example.ui.Screen
-import com.example.ui.components.AppBottomBar
-import com.example.ui.components.AppTopBar
+import com.example.ui.components.AppNavigationShell
 import com.example.ui.components.CompactSearchBar
+import com.example.ui.components.SoftElevatedCard
 import com.example.ui.theme.DangerRed
+import com.example.ui.theme.DarkBackground
+import com.example.ui.theme.DarkDangerRed
+import com.example.ui.theme.DarkEmeraldPrimary
+import com.example.ui.theme.DarkSurface
+import com.example.ui.theme.DarkTextPrimary
+import com.example.ui.theme.DarkTextSecondary
 import com.example.ui.theme.EmeraldGreenDark
 import com.example.ui.theme.EmeraldGreenPrimary
 import com.example.util.FormatUtils
@@ -147,42 +153,21 @@ fun ExpenseScreen(
 
     val totalExpenseAmount = filteredExpenses.sumOf { it.amount }
 
-    Scaffold(
-        topBar = {
-            AppTopBar(
-                title = LakuStrings.get("expenses_title", lang),
-                storeProfile = storeProfile,
-                onSettingsClick = onOpenSettings
-            )
-        },
-        bottomBar = {
-            AppBottomBar(
-                currentScreen = Screen.EXPENSES,
-                cartItemCount = cart.size,
-                lang = lang,
-                onNavigate = onNavigate
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    expenseToEdit = null
-                    showExpenseDialog = true
-                },
-                containerColor = EmeraldGreenPrimary,
-                contentColor = Color.White,
-                shape = CircleShape,
-                modifier = Modifier.testTag("add_expense_fab")
-            ) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = LakuStrings.get("add_expense_title", lang))
-            }
-        }
-    ) { innerPadding ->
+    AppNavigationShell(
+        title = LakuStrings.get("expenses_title", lang),
+        currentScreen = Screen.EXPENSES,
+        storeProfile = storeProfile,
+        cartItemCount = cart.size,
+        onNavigate = onNavigate,
+        onOpenSettings = onOpenSettings
+    ) { layoutInfo, innerPadding ->
+        val isTwoCol = layoutInfo.screenWidth >= 960.dp
+        val hPad = if (layoutInfo.useSidebarNavigation) 20.dp else 14.dp
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(start = hPad, end = hPad, top = 12.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Period selector tabs
@@ -203,7 +188,7 @@ fun ExpenseScreen(
                         Surface(
                             onClick = { selectedPeriod = key },
                             shape = RoundedCornerShape(20.dp),
-                            color = if (isSelected) EmeraldGreenPrimary else MaterialTheme.colorScheme.surface,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
                             border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                             modifier = Modifier.height(36.dp)
                         ) {
@@ -215,7 +200,7 @@ fun ExpenseScreen(
                                     text = label,
                                     fontSize = 12.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                                     maxLines = 1,
                                     softWrap = false
                                 )
@@ -227,10 +212,12 @@ fun ExpenseScreen(
 
             // Summary Card
             item {
-                Card(
+                val isDark = MaterialTheme.colorScheme.background == DarkBackground
+                val accentRed = if (isDark) DarkDangerRed else DangerRed
+                SoftElevatedCard(
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF2F2)), // Soft rose red
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                    containerColor = if (isDark) DarkSurface else Color(0xFFFFF5F5),
+                    borderColor = if (isDark) DarkDangerRed.copy(alpha = 0.42f) else Color(0xFFFECACA),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -246,13 +233,13 @@ fun ExpenseScreen(
                                     modifier = Modifier
                                         .size(32.dp)
                                         .clip(CircleShape)
-                                        .background(DangerRed.copy(alpha = 0.15f)),
+                                        .background(accentRed.copy(alpha = 0.16f)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.MoneyOff,
                                         contentDescription = null,
-                                        tint = DangerRed,
+                                        tint = accentRed,
                                         modifier = Modifier.size(18.dp)
                                     )
                                 }
@@ -261,7 +248,7 @@ fun ExpenseScreen(
                                     text = LakuStrings.get("total_expenses", lang),
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = Color(0xFF991B1B)
+                                    color = if (isDark) DarkTextPrimary else Color(0xFF991B1B)
                                 )
                             }
                             Spacer(modifier = Modifier.height(8.dp))
@@ -269,13 +256,13 @@ fun ExpenseScreen(
                                 text = FormatUtils.formatRupiah(totalExpenseAmount),
                                 fontSize = 22.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = DangerRed
+                                color = accentRed
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = "${filteredExpenses.size} ${LakuStrings.get("expense_records_count", lang)}",
                                 fontSize = 12.sp,
-                                color = Color(0xFFB91C1C)
+                                color = if (isDark) DarkTextSecondary else Color(0xFFB91C1C)
                             )
                         }
 
@@ -327,10 +314,24 @@ fun ExpenseScreen(
                             FilterChip(
                                 selected = isSelected,
                                 onClick = { selectedCategoryFilter = cat },
-                                label = { Text(LakuStrings.translateExpenseCategory(cat, lang), fontSize = 11.sp) },
+                                label = {
+                                    Text(
+                                        text = LakuStrings.translateExpenseCategory(cat, lang),
+                                        fontSize = 11.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                    )
+                                },
                                 colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    selectedLabelColor = MaterialTheme.colorScheme.primary
+                                    containerColor = MaterialTheme.colorScheme.surface,
+                                    labelColor = MaterialTheme.colorScheme.onSurface,
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = isSelected,
+                                    borderColor = MaterialTheme.colorScheme.outlineVariant,
+                                    selectedBorderColor = Color.Transparent
                                 ),
                                 shape = RoundedCornerShape(16.dp)
                             )
@@ -362,13 +363,11 @@ fun ExpenseScreen(
             // Empty state
             if (filteredExpenses.isEmpty()) {
                 item {
-                    Card(
+                    SoftElevatedCard(
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 24.dp)
+                            .padding(vertical = 16.dp)
                     ) {
                         Column(
                             modifier = Modifier
@@ -410,13 +409,43 @@ fun ExpenseScreen(
                                     expenseToEdit = null
                                     showExpenseDialog = true
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
                                 shape = RoundedCornerShape(10.dp)
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text(LakuStrings.get("record_first_expense", lang))
+                                Text(LakuStrings.get("record_first_expense", lang), fontWeight = FontWeight.Bold)
                             }
+                        }
+                    }
+                }
+            } else if (isTwoCol) {
+                val rows = filteredExpenses.chunked(2)
+                items(rows, key = { row -> row.joinToString("_") { it.id.toString() } }) { rowItems ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        rowItems.forEach { expense ->
+                            Box(modifier = Modifier.weight(1f)) {
+                                ExpenseItemCard(
+                                    expense = expense,
+                                    lang = lang,
+                                    onEdit = {
+                                        expenseToEdit = expense
+                                        showExpenseDialog = true
+                                    },
+                                    onDelete = {
+                                        expenseToDelete = expense
+                                    }
+                                )
+                            }
+                        }
+                        if (rowItems.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
                         }
                     }
                 }
@@ -501,139 +530,174 @@ fun ExpenseItemCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val isDark = MaterialTheme.colorScheme.background == DarkBackground
+    val accentRed = if (isDark) DarkDangerRed else DangerRed
+    val accentGreen = MaterialTheme.colorScheme.primary
+    val accentGreenText = if (isDark) DarkEmeraldPrimary else EmeraldGreenDark
+
     val formattedDate = remember(expense.timestamp, lang) {
-        FormatUtils.formatDateTime(expense.timestamp, lang)
+        val locale = LakuStrings.localeFor(lang)
+        SimpleDateFormat("dd MMM yyyy • HH:mm", locale).format(Date(expense.timestamp))
     }
 
-    Card(
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    SoftElevatedCard(
+        shape = RoundedCornerShape(16.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
+            // Top Row: Icon (left) + Title & Category Badge (center-left) + Red Amount & Single-line Date (right)
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(accentRed.copy(alpha = 0.13f)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(DangerRed.copy(alpha = 0.12f)),
-                        contentAlignment = Alignment.Center
+                    Icon(
+                        imageVector = Icons.Default.Payments,
+                        contentDescription = null,
+                        tint = accentRed,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = expense.title,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Payments,
-                            contentDescription = null,
-                            tint = DangerRed,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
                         Text(
-                            text = expense.title,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
+                            text = LakuStrings.translateExpenseCategory(expense.category, lang),
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
                         )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant
-                            ) {
-                                Text(
-                                    text = LakuStrings.translateExpenseCategory(expense.category, lang),
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = formattedDate,
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
                     }
                 }
 
-                // Amount
-                Text(
-                    text = "- ${FormatUtils.formatRupiah(expense.amount)}",
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 15.sp,
-                    color = DangerRed
-                )
-            }
+                Spacer(modifier = Modifier.width(8.dp))
 
-            if (expense.note.isNotBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text = "${LakuStrings.get("note_prefix", lang)} ${expense.note}",
-                        fontSize = 12.sp,
+                        text = "- ${FormatUtils.formatRupiah(expense.amount)}",
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 14.5.sp,
+                        color = accentRed,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = formattedDate,
+                        fontSize = 10.5.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
+            HorizontalDivider(thickness = 0.8.dp, color = MaterialTheme.colorScheme.outlineVariant)
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // Action Buttons: Edit and Delete
+            // Bottom Row: Note (left) + Edit & Delete buttons (right) aligned cleanly
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlinedButton(
-                    onClick = onEdit,
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                    modifier = Modifier.height(34.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = LakuStrings.get("edit", lang),
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(15.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = LakuStrings.get("edit", lang),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                Box(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                    if (expense.note.isNotBlank()) {
+                        Text(
+                            text = "${LakuStrings.get("note_prefix", lang)} ${expense.note}",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
-
-                IconButton(
-                    onClick = onDelete,
-                    modifier = Modifier.size(34.dp)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = LakuStrings.get("delete", lang),
-                        tint = DangerRed.copy(alpha = 0.8f),
-                        modifier = Modifier.size(18.dp)
-                    )
+                    Surface(
+                        onClick = onEdit,
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = LakuStrings.get("edit", lang),
+                                tint = accentGreen,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = LakuStrings.get("edit", lang),
+                                fontSize = 11.5.sp,
+                                color = accentGreenText,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                    }
+
+                    Surface(
+                        onClick = onDelete,
+                        shape = RoundedCornerShape(8.dp),
+                        color = accentRed.copy(alpha = 0.11f),
+                        border = BorderStroke(1.dp, accentRed.copy(alpha = 0.3f)),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = LakuStrings.get("delete", lang),
+                                tint = accentRed,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = LakuStrings.get("delete", lang),
+                                fontSize = 11.5.sp,
+                                color = accentRed,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -793,10 +857,13 @@ fun AddEditExpenseDialog(
                         )
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text(LakuStrings.get("save", lang), color = Color.White, fontWeight = FontWeight.Bold)
+                Text(LakuStrings.get("save", lang), color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {

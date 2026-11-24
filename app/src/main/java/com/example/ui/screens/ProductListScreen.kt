@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -76,15 +79,19 @@ import com.example.data.model.Product
 import com.example.data.model.StoreProfile
 import com.example.ui.LakuKasirViewModel
 import com.example.ui.Screen
-import com.example.ui.components.AppBottomBar
-import com.example.ui.components.AppTopBar
+import com.example.ui.components.AppNavigationShell
 import com.example.ui.components.BarcodeScannerDialog
 import com.example.ui.components.CompactSearchBar
 import com.example.ui.components.CurrencySelectionDialog
+import com.example.ui.components.SoftElevatedCard
 import com.example.ui.theme.DangerRed
+import com.example.ui.theme.DarkBackground
+import com.example.ui.theme.DarkDangerRed
+import com.example.ui.theme.DarkEmeraldPrimary
 import com.example.ui.theme.EmeraldGreenDark
 import com.example.ui.theme.EmeraldGreenPrimary
 import com.example.util.FormatUtils
+import com.example.util.ImageUtils
 import com.example.util.LakuStrings
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -99,7 +106,12 @@ fun ProductListScreen(
     val lang = storeProfile.language
     val products by viewModel.allProducts.collectAsState()
     val cart by viewModel.cart.collectAsState()
-    val isProLicense by viewModel.isProLicense.collectAsState()
+
+    val isDark = MaterialTheme.colorScheme.background == DarkBackground
+    val accentGreen = MaterialTheme.colorScheme.primary
+    val onAccentGreen = MaterialTheme.colorScheme.onPrimary
+    val accentGreenText = if (isDark) DarkEmeraldPrimary else EmeraldGreenDark
+    val accentRed = if (isDark) DarkDangerRed else DangerRed
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("Semua") }
@@ -121,47 +133,33 @@ fun ProductListScreen(
         matchesQuery && matchesCat && matchesLowStock
     }
 
-    Scaffold(
-        topBar = {
-            AppTopBar(
-                title = LakuStrings.get("nav_products", lang),
-                storeProfile = storeProfile,
-                onSettingsClick = onOpenSettings,
-                onLicenseBadgeClick = { viewModel.openActivationDialog() }
-            )
-        },
-        bottomBar = {
-            AppBottomBar(
-                currentScreen = Screen.PRODUCTS,
-                cartItemCount = cart.size,
-                lang = lang,
-                onNavigate = onNavigate
-            )
-        },
+    AppNavigationShell(
+        title = LakuStrings.get("nav_products", lang),
+        currentScreen = Screen.PRODUCTS,
+        storeProfile = storeProfile,
+        cartItemCount = cart.size,
+        onNavigate = onNavigate,
+        onOpenSettings = onOpenSettings,
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    if (!isProLicense && products.size >= com.example.util.LicenseManager.MAX_TRIAL_PRODUCTS) {
-                        viewModel.trialLimitDialogMessage.value = "Batas Produk Uji Coba Tercapai!\nVersi Trial dibatasi maksimal ${com.example.util.LicenseManager.MAX_TRIAL_PRODUCTS} produk. Silakan aktivasi lisensi PRO untuk menambahkan produk tanpa batas."
-                        viewModel.openActivationDialog()
-                    } else {
-                        viewModel.productToEdit.value = null
-                        onNavigate(Screen.ADD_EDIT_PRODUCT)
-                    }
+                    viewModel.productToEdit.value = null
+                    onNavigate(Screen.ADD_EDIT_PRODUCT)
                 },
-                containerColor = EmeraldGreenPrimary,
-                contentColor = Color.White,
+                containerColor = accentGreen,
+                contentColor = onAccentGreen,
                 modifier = Modifier.testTag("add_product_fab")
             ) {
                 Icon(imageVector = Icons.Default.Add, contentDescription = LakuStrings.get("add_product", lang))
             }
         }
-    ) { innerPadding ->
+    ) { layoutInfo, innerPadding ->
+        val listColumns = if (layoutInfo.screenWidth >= 960.dp) 2 else 1
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 14.dp, vertical = 8.dp)
+                .padding(horizontal = if (layoutInfo.useSidebarNavigation) 20.dp else 14.dp, vertical = 10.dp)
         ) {
             // Currency & Total Products Bar
             Row(
@@ -175,8 +173,8 @@ fun ProductListScreen(
                 Surface(
                     onClick = { showCurrencyDialog = true },
                     shape = RoundedCornerShape(8.dp),
-                    color = EmeraldGreenPrimary.copy(alpha = 0.1f),
-                    border = BorderStroke(1.dp, EmeraldGreenPrimary.copy(alpha = 0.3f))
+                    color = accentGreen.copy(alpha = if (isDark) 0.14f else 0.1f),
+                    border = BorderStroke(1.dp, accentGreen.copy(alpha = if (isDark) 0.38f else 0.3f))
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -188,10 +186,10 @@ fun ProductListScreen(
                             text = "${curr.name} (${curr.symbol})",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = EmeraldGreenDark
+                            color = accentGreenText
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(LakuStrings.get("change_currency", lang), fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                        Text(LakuStrings.get("change_currency", lang), fontSize = 11.sp, color = accentGreen, fontWeight = FontWeight.SemiBold)
                     }
                 }
 
@@ -222,14 +220,14 @@ fun ProductListScreen(
                 Surface(
                     onClick = { showBarcodeScanner = true },
                     shape = RoundedCornerShape(12.dp),
-                    color = EmeraldGreenPrimary,
+                    color = accentGreen,
                     modifier = Modifier.size(42.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Default.QrCodeScanner,
                             contentDescription = LakuStrings.get("scan_barcode_title", lang),
-                            tint = Color.White,
+                            tint = onAccentGreen,
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -247,10 +245,18 @@ fun ProductListScreen(
                     FilterChip(
                         selected = showOnlyLowStock,
                         onClick = { showOnlyLowStock = !showOnlyLowStock },
-                        label = { Text("⚠️ ${LakuStrings.get("low_stock_chip", lang)}", fontSize = 12.sp, fontWeight = if (showOnlyLowStock) FontWeight.Bold else FontWeight.Normal) },
+                        label = { Text("⚠️ ${LakuStrings.get("low_stock_chip", lang)}", fontSize = 12.sp, fontWeight = if (showOnlyLowStock) FontWeight.Bold else FontWeight.Medium) },
                         colors = FilterChipDefaults.filterChipColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            labelColor = MaterialTheme.colorScheme.onSurface,
                             selectedContainerColor = DangerRed,
                             selectedLabelColor = Color.White
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = showOnlyLowStock,
+                            borderColor = MaterialTheme.colorScheme.outlineVariant,
+                            selectedBorderColor = Color.Transparent
                         ),
                         shape = RoundedCornerShape(20.dp)
                     )
@@ -264,10 +270,18 @@ fun ProductListScreen(
                             showOnlyLowStock = false
                             selectedCategory = cat
                         },
-                        label = { Text(LakuStrings.translateCategory(cat, lang), fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
+                        label = { Text(LakuStrings.translateCategory(cat, lang), fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium) },
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = EmeraldGreenPrimary,
-                            selectedLabelColor = Color.White
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            labelColor = MaterialTheme.colorScheme.onSurface,
+                            selectedContainerColor = accentGreen,
+                            selectedLabelColor = onAccentGreen
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = isSelected,
+                            borderColor = MaterialTheme.colorScheme.outlineVariant,
+                            selectedBorderColor = Color.Transparent
                         ),
                         shape = RoundedCornerShape(20.dp)
                     )
@@ -284,10 +298,8 @@ fun ProductListScreen(
                         .padding(24.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Card(
+                    SoftElevatedCard(
                         shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(
@@ -297,7 +309,7 @@ fun ProductListScreen(
                             Icon(
                                 imageVector = Icons.Default.Inventory,
                                 contentDescription = null,
-                                tint = EmeraldGreenPrimary,
+                                tint = accentGreen,
                                 modifier = Modifier.size(48.dp)
                             )
                             Spacer(modifier = Modifier.height(14.dp))
@@ -319,12 +331,25 @@ fun ProductListScreen(
                                     viewModel.productToEdit.value = null
                                     onNavigate(Screen.ADD_EDIT_PRODUCT)
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary),
+                                colors = ButtonDefaults.buttonColors(containerColor = accentGreen, contentColor = onAccentGreen),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
-                                Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = Color.White)
+                                Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = onAccentGreen)
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text(LakuStrings.get("add_new_product_btn", lang), fontWeight = FontWeight.Bold, color = Color.White)
+                                Text(LakuStrings.get("add_new_product_btn", lang), fontWeight = FontWeight.Bold, color = onAccentGreen)
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = { viewModel.loadDemoSampleProducts() },
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, accentGreen.copy(alpha = 0.5f)),
+                                modifier = Modifier.testTag("products_load_sample_button")
+                            ) {
+                                Text(
+                                    text = "Muat 4 Contoh Produk",
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = accentGreenText
+                                )
                             }
                         }
                     }
@@ -337,15 +362,15 @@ fun ProductListScreen(
                     Text(LakuStrings.get("no_filtered_products", lang), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(bottom = 80.dp)
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(listColumns),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(top = 4.dp, bottom = 88.dp)
                 ) {
-                    items(filtered, key = { it.id }) { product ->
-                        Card(
-                            shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                    gridItems(filtered, key = { it.id }) { product ->
+                        SoftElevatedCard(
+                            shape = RoundedCornerShape(16.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
@@ -355,13 +380,16 @@ fun ProductListScreen(
                                         modifier = Modifier
                                             .size(56.dp)
                                             .clip(RoundedCornerShape(10.dp))
-                                            .background(EmeraldGreenPrimary.copy(alpha = 0.08f)),
+                                            .background(accentGreen.copy(alpha = if (isDark) 0.14f else 0.08f)),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        if (product.imageUri != null) {
+                                        val resolvedImageModel = remember(product.imageUri) {
+                                            ImageUtils.resolveProductImageModel(product.imageUri)
+                                        }
+                                        if (resolvedImageModel != null) {
                                             AsyncImage(
                                                 model = ImageRequest.Builder(context)
-                                                    .data(product.imageUri)
+                                                    .data(resolvedImageModel)
                                                     .crossfade(true)
                                                     .build(),
                                                 contentDescription = product.name,
@@ -372,7 +400,7 @@ fun ProductListScreen(
                                             Icon(
                                                 imageVector = Icons.Default.Inventory,
                                                 contentDescription = null,
-                                                tint = EmeraldGreenPrimary,
+                                                tint = accentGreen,
                                                 modifier = Modifier.size(28.dp)
                                             )
                                         }
@@ -389,17 +417,20 @@ fun ProductListScreen(
                                             overflow = TextOverflow.Ellipsis
                                         )
                                         Text(
-                                            text = "${LakuStrings.translateCategory(product.category, lang)} • ${LakuStrings.get("unit_prefix", lang)} ${LakuStrings.translateUnit(product.unit, lang)}",
+                                            text = LakuStrings.translateCategory(product.category, lang),
                                             fontSize = 12.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
                                         )
-                                        if (product.barcode.isNotBlank()) {
-                                            Text(
-                                                text = "Barcode: ${product.barcode}",
-                                                fontSize = 11.sp,
-                                                color = MaterialTheme.colorScheme.outline
-                                            )
-                                        }
+                                        Text(
+                                            text = "${LakuStrings.get("unit_prefix", lang)} ${LakuStrings.translateUnit(product.unit, lang)}" +
+                                                    if (product.barcode.isNotBlank()) "  •  ${product.barcode}" else "",
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
                                     }
 
                                     // Edit & Delete
@@ -407,13 +438,13 @@ fun ProductListScreen(
                                         viewModel.productToEdit.value = product
                                         onNavigate(Screen.ADD_EDIT_PRODUCT)
                                     }) {
-                                        Icon(imageVector = Icons.Default.Edit, contentDescription = LakuStrings.get("edit", lang), tint = EmeraldGreenPrimary)
+                                        Icon(imageVector = Icons.Default.Edit, contentDescription = LakuStrings.get("edit", lang), tint = accentGreen)
                                     }
 
                                     IconButton(onClick = {
                                         productToDelete = product
                                     }) {
-                                        Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = LakuStrings.get("delete", lang), tint = DangerRed)
+                                        Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = LakuStrings.get("delete", lang), tint = accentRed)
                                     }
                                 }
 
@@ -437,7 +468,7 @@ fun ProductListScreen(
                                             text = "${LakuStrings.get("sell_short", lang)} ${FormatUtils.formatRupiah(product.sellingPrice)}",
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 14.sp,
-                                            color = EmeraldGreenDark
+                                            color = accentGreenText
                                         )
                                     }
 
@@ -445,13 +476,13 @@ fun ProductListScreen(
                                     if (product.isUnlimitedStock) {
                                         Surface(
                                             shape = RoundedCornerShape(8.dp),
-                                            color = EmeraldGreenPrimary.copy(alpha = 0.12f)
+                                            color = accentGreen.copy(alpha = if (isDark) 0.16f else 0.12f)
                                         ) {
                                             Text(
                                                 text = LakuStrings.get("stock_unlimited_short", lang),
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 12.sp,
-                                                color = EmeraldGreenDark,
+                                                color = accentGreenText,
                                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                             )
                                         }
@@ -461,18 +492,18 @@ fun ProductListScreen(
                                                 onClick = { viewModel.quickUpdateStock(product, -1.0) },
                                                 modifier = Modifier.size(28.dp)
                                             ) {
-                                                Icon(imageVector = Icons.Default.Remove, contentDescription = "-1", tint = DangerRed)
+                                                Icon(imageVector = Icons.Default.Remove, contentDescription = "-1", tint = accentRed)
                                             }
 
                                             Surface(
                                                 shape = RoundedCornerShape(6.dp),
-                                                color = if (product.isLowStock) DangerRed.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant
+                                                color = if (product.isLowStock) accentRed.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surfaceVariant
                                             ) {
                                                 Text(
                                                     text = FormatUtils.formatQty(product.stock, product.unit),
                                                     fontWeight = FontWeight.Bold,
                                                     fontSize = 12.sp,
-                                                    color = if (product.isLowStock) DangerRed else MaterialTheme.colorScheme.onSurface,
+                                                    color = if (product.isLowStock) accentRed else MaterialTheme.colorScheme.onSurface,
                                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                                 )
                                             }
@@ -481,7 +512,7 @@ fun ProductListScreen(
                                                 onClick = { viewModel.quickUpdateStock(product, 1.0) },
                                                 modifier = Modifier.size(28.dp)
                                             ) {
-                                                Icon(imageVector = Icons.Default.Add, contentDescription = "+1", tint = EmeraldGreenPrimary)
+                                                Icon(imageVector = Icons.Default.Add, contentDescription = "+1", tint = accentGreen)
                                             }
                                         }
                                     }

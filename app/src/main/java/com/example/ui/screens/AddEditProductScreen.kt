@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -86,9 +87,16 @@ import com.example.data.model.Categories
 import com.example.data.model.CurrencyCatalog
 import com.example.data.model.Product
 import com.example.ui.components.CurrencySelectionDialog
+import com.example.ui.theme.DangerRed
+import com.example.ui.theme.DarkBackground
+import com.example.ui.theme.DarkBorder
+import com.example.ui.theme.DarkDangerRed
+import com.example.ui.theme.DarkEmeraldPrimary
 import com.example.ui.theme.EmeraldGreenDark
 import com.example.ui.theme.EmeraldGreenPrimary
+import com.example.ui.theme.SoftCardBorder
 import com.example.util.FormatUtils
+import com.example.util.ImageUtils
 import com.example.util.LakuStrings
 import java.util.UUID
 
@@ -117,6 +125,11 @@ fun AddEditProductScreen(
 ) {
     val context = LocalContext.current
     val isEdit = productToEdit != null
+    val isDark = MaterialTheme.colorScheme.background == DarkBackground
+    val accentGreen = MaterialTheme.colorScheme.primary
+    val onAccentGreen = MaterialTheme.colorScheme.onPrimary
+    val accentGreenText = if (isDark) DarkEmeraldPrimary else EmeraldGreenDark
+    val accentRed = if (isDark) DarkDangerRed else DangerRed
 
     var name by remember { mutableStateOf(productToEdit?.name ?: "") }
     var category by remember { mutableStateOf(productToEdit?.category ?: Categories.ALL_CATEGORIES.first()) }
@@ -176,55 +189,68 @@ fun AddEditProductScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = if (isEdit) LakuStrings.get("edit_product", lang) else LakuStrings.get("add_product", lang),
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack, modifier = Modifier.testTag("add_product_back_button")) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = LakuStrings.get("back", lang))
-                    }
-                },
-                actions = {
-                    Button(
-                        onClick = onPerformSave,
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                        modifier = Modifier
-                            .padding(end = 8.dp)
-                            .testTag("save_product_top_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
+            Column {
+                TopAppBar(
+                    title = {
                         Text(
-                            text = LakuStrings.get("save", lang),
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            fontSize = 14.sp
+                            text = if (isEdit) LakuStrings.get("edit_product", lang) else LakuStrings.get("add_product", lang),
+                            fontWeight = FontWeight.Bold
                         )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack, modifier = Modifier.testTag("add_product_back_button")) {
+                            Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = LakuStrings.get("back", lang))
+                        }
+                    },
+                    actions = {
+                        Button(
+                            onClick = onPerformSave,
+                            colors = ButtonDefaults.buttonColors(containerColor = accentGreen, contentColor = onAccentGreen),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                            modifier = Modifier
+                                .padding(end = 8.dp)
+                                .testTag("save_product_top_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = onAccentGreen,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = LakuStrings.get("save", lang),
+                                fontWeight = FontWeight.Bold,
+                                color = onAccentGreen,
+                                fontSize = 14.sp
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = if (isDark) DarkBackground else Color.White,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface
+                    )
                 )
-            )
+                androidx.compose.material3.HorizontalDivider(
+                    thickness = 1.dp,
+                    color = if (isDark) DarkBorder else SoftCardBorder
+                )
+            }
         }
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(innerPadding),
+            contentAlignment = Alignment.TopCenter
+        ) {
+        Column(
+            modifier = Modifier
+                .widthIn(max = 680.dp)
+                .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -247,10 +273,13 @@ fun AddEditProductScreen(
                         .height(160.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (imageUri != null) {
+                    val resolvedImageModel = remember(imageUri) {
+                        ImageUtils.resolveProductImageModel(imageUri)
+                    }
+                    if (resolvedImageModel != null) {
                         AsyncImage(
                             model = ImageRequest.Builder(context)
-                                .data(imageUri)
+                                .data(resolvedImageModel)
                                 .crossfade(true)
                                 .build(),
                             contentDescription = LakuStrings.get("upload_product_photo", lang),
@@ -262,12 +291,12 @@ fun AddEditProductScreen(
                                 .align(Alignment.BottomEnd)
                                 .padding(12.dp),
                             shape = CircleShape,
-                            color = EmeraldGreenPrimary
+                            color = accentGreen
                         ) {
                             Icon(
                                 imageVector = Icons.Default.AddPhotoAlternate,
                                 contentDescription = LakuStrings.get("upload_product_photo", lang),
-                                tint = Color.White,
+                                tint = onAccentGreen,
                                 modifier = Modifier.padding(8.dp).size(20.dp)
                             )
                         }
@@ -279,14 +308,14 @@ fun AddEditProductScreen(
                             Icon(
                                 imageVector = Icons.Default.AddPhotoAlternate,
                                 contentDescription = LakuStrings.get("upload_product_photo", lang),
-                                tint = EmeraldGreenPrimary,
+                                tint = accentGreen,
                                 modifier = Modifier.size(48.dp)
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = LakuStrings.get("upload_product_photo", lang),
                                 fontWeight = FontWeight.SemiBold,
-                                color = EmeraldGreenDark,
+                                color = accentGreenText,
                                 fontSize = 14.sp
                             )
                             Text(
@@ -408,7 +437,7 @@ fun AddEditProductScreen(
                 Surface(
                     onClick = { showBarcodeScanner = true },
                     shape = RoundedCornerShape(12.dp),
-                    color = EmeraldGreenPrimary,
+                    color = accentGreen,
                     modifier = Modifier
                         .size(54.dp)
                         .testTag("add_product_scan_barcode_button")
@@ -417,7 +446,7 @@ fun AddEditProductScreen(
                         Icon(
                             imageVector = Icons.Default.QrCodeScanner,
                             contentDescription = LakuStrings.get("scan_barcode_title", lang),
-                            tint = Color.White,
+                            tint = onAccentGreen,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -449,8 +478,8 @@ fun AddEditProductScreen(
 
             Card(
                 shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
-                border = BorderStroke(1.dp, EmeraldGreenPrimary.copy(alpha = 0.3f)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, accentGreen.copy(alpha = 0.35f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
@@ -475,7 +504,7 @@ fun AddEditProductScreen(
                                 text = "${activeCurrency.name} (${activeCurrency.symbol})",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = EmeraldGreenDark,
+                                color = accentGreenText,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -485,7 +514,7 @@ fun AddEditProductScreen(
 
                         Button(
                             onClick = { showCurrencyDialog = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary),
+                            colors = ButtonDefaults.buttonColors(containerColor = accentGreen, contentColor = onAccentGreen),
                             shape = RoundedCornerShape(10.dp),
                             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                         ) {
@@ -493,14 +522,14 @@ fun AddEditProductScreen(
                                 imageVector = Icons.Default.Language,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
-                                tint = Color.White
+                                tint = onAccentGreen
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = LakuStrings.get("change_country", lang),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White,
+                                color = onAccentGreen,
                                 maxLines = 1,
                                 softWrap = false
                             )
@@ -543,10 +572,18 @@ fun AddEditProductScreen(
                                     val curr = CurrencyCatalog.getCurrency(code)
                                     Toast.makeText(context, "${LakuStrings.get("currency_changed_toast", lang)} ${curr.name} (${curr.symbol})", Toast.LENGTH_SHORT).show()
                                 },
-                                label = { Text(label, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
+                                label = { Text(label, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium) },
                                 colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = EmeraldGreenPrimary,
-                                    selectedLabelColor = Color.White
+                                    containerColor = MaterialTheme.colorScheme.surface,
+                                    labelColor = MaterialTheme.colorScheme.onSurface,
+                                    selectedContainerColor = accentGreen,
+                                    selectedLabelColor = onAccentGreen
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = isSelected,
+                                    borderColor = MaterialTheme.colorScheme.outlineVariant,
+                                    selectedBorderColor = Color.Transparent
                                 ),
                                 shape = RoundedCornerShape(8.dp)
                             )
@@ -595,12 +632,12 @@ fun AddEditProductScreen(
 
             if (sellVal > 0.0 || costVal > 0.0) {
                 val isProfit = profitVal >= 0
-                val accentColor = if (isProfit) EmeraldGreenDark else Color(0xFFDC2626)
-                val badgeBg = if (isProfit) EmeraldGreenPrimary.copy(alpha = 0.16f) else Color(0xFFDC2626).copy(alpha = 0.15f)
+                val accentColor = if (isProfit) accentGreenText else accentRed
+                val badgeBg = if (isProfit) accentGreen.copy(alpha = 0.16f) else accentRed.copy(alpha = 0.16f)
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = if (isProfit) EmeraldGreenPrimary.copy(alpha = 0.1f) else Color(0xFFDC2626).copy(alpha = 0.08f),
-                    border = BorderStroke(1.dp, (if (isProfit) EmeraldGreenPrimary else Color(0xFFDC2626)).copy(alpha = 0.25f)),
+                    color = if (isProfit) accentGreen.copy(alpha = 0.1f) else accentRed.copy(alpha = 0.1f),
+                    border = BorderStroke(1.dp, (if (isProfit) accentGreen else accentRed).copy(alpha = 0.3f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -675,8 +712,8 @@ fun AddEditProductScreen(
                             checked = isUnlimitedStock,
                             onCheckedChange = { isUnlimitedStock = it },
                             colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = EmeraldGreenPrimary
+                                checkedThumbColor = onAccentGreen,
+                                checkedTrackColor = accentGreen
                             ),
                             modifier = Modifier.testTag("unlimited_stock_switch")
                         )
@@ -798,20 +835,21 @@ fun AddEditProductScreen(
                     .fillMaxWidth()
                     .height(52.dp)
                     .testTag("save_product_button"),
-                colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary),
+                colors = ButtonDefaults.buttonColors(containerColor = accentGreen, contentColor = onAccentGreen),
                 shape = RoundedCornerShape(14.dp)
             ) {
-                Icon(imageVector = Icons.Default.Check, contentDescription = null, tint = Color.White)
+                Icon(imageVector = Icons.Default.Check, contentDescription = null, tint = onAccentGreen)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = if (isEdit) LakuStrings.get("save_changes", lang) else LakuStrings.get("add_to_catalog", lang),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = onAccentGreen
                 )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+        }
         }
     }
 

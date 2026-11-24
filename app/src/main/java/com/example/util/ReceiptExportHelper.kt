@@ -49,8 +49,7 @@ object ReceiptExportHelper {
         val baseHeight = 900
         val itemsHeight = transaction.items.size * 66
         val notesLines = storeProfile.receiptNotes.split("\n").size * 32
-        val trialExtraHeight = if (!LicenseManager.isProActivated()) 90 else 0
-        val height = baseHeight + itemsHeight + notesLines + trialExtraHeight
+        val height = baseHeight + itemsHeight + notesLines
 
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
@@ -270,7 +269,7 @@ object ReceiptExportHelper {
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.ITALIC)
             textAlign = Paint.Align.CENTER
         }
-        canvas.drawText("Laku Kasir Pro v1.1 - by Rafline Dev", width / 2f, y, footerPaint)
+        canvas.drawText("Laku Kasir Pro v1.2 - by Rafline Dev", width / 2f, y, footerPaint)
 
         // Trim unused white space at bottom nicely
         val finalHeight = (y + 44f).toInt().coerceIn(300, height)

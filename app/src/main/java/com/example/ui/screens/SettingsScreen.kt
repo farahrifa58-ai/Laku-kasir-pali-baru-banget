@@ -1,5 +1,9 @@
 package com.example.ui.screens
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -19,7 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -27,14 +33,17 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.LanguageCatalog
 import com.example.ui.LakuKasirViewModel
+import com.example.ui.components.SoftElevatedCard
 import com.example.ui.components.StoreAvatar
 import com.example.ui.screens.settings.*
 import com.example.ui.theme.PrimaryGreen
 import com.example.util.LakuStrings
+import com.example.util.LicenseManager
 
 private enum class SettingsSection {
     HUB,
     STORE_PROFILE,
+    LICENSE_STATUS,
     RECEIPT_CUSTOMIZATION,
     TAX_DISCOUNT,
     PRINTER,
@@ -50,6 +59,7 @@ fun SettingsScreen(
     onBack: () -> Unit = {}
 ) {
     val storeProfile by viewModel.storeProfile.collectAsStateWithLifecycle()
+    val licenseInfo by viewModel.licenseInfo.collectAsStateWithLifecycle()
     val lang = storeProfile.language
     var currentSection by remember { mutableStateOf(SettingsSection.HUB) }
 
@@ -60,8 +70,14 @@ fun SettingsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .systemBarsPadding()
+            .systemBarsPadding(),
+        contentAlignment = Alignment.TopCenter
     ) {
+        Box(
+            modifier = Modifier
+                .widthIn(max = 720.dp)
+                .fillMaxSize()
+        ) {
         when (currentSection) {
             SettingsSection.HUB -> {
                 val activeLangObj = remember(lang) { LanguageCatalog.getLanguage(lang) }
@@ -124,15 +140,14 @@ fun SettingsScreen(
                     }
 
                 // 1. Store Profile Card (Featured Hero Card)
-                Card(
+                val themePrimary = MaterialTheme.colorScheme.primary
+                SoftElevatedCard(
+                    onClick = { currentSection = SettingsSection.STORE_PROFILE },
+                    shape = RoundedCornerShape(16.dp),
+                    borderColor = themePrimary.copy(alpha = 0.4f),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { currentSection = SettingsSection.STORE_PROFILE }
-                        .testTag("settings_card_store_profile"),
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-                    border = BorderStroke(1.dp, PrimaryGreen.copy(alpha = 0.3f))
+                        .testTag("settings_card_store_profile")
                 ) {
                     Row(
                         modifier = Modifier
@@ -151,7 +166,7 @@ fun SettingsScreen(
                             Text(
                                 text = LakuStrings.get("store_profile", lang),
                                 style = MaterialTheme.typography.labelMedium,
-                                color = PrimaryGreen,
+                                color = themePrimary,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
@@ -176,10 +191,21 @@ fun SettingsScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                             contentDescription = null,
-                            tint = PrimaryGreen
+                            tint = themePrimary
                         )
                     }
                 }
+
+                // 1b. License Status Menu Card (opens dedicated detail screen)
+                SettingsMenuCard(
+                    title = "Status Lisensi Perangkat",
+                    subtitle = "Aktif Permanen • 100% Offline Lokal",
+                    badgeText = "AKTIF",
+                    icon = Icons.Default.VerifiedUser,
+                    accentColor = themePrimary,
+                    onClick = { currentSection = SettingsSection.LICENSE_STATUS },
+                    tag = "settings_card_license_status"
+                )
 
                 // 2. Receipt Customization Card
                 SettingsMenuCard(
@@ -247,9 +273,9 @@ fun SettingsScreen(
                 SettingsMenuCard(
                     title = LakuStrings.get("about_app", lang),
                     subtitle = LakuStrings.get("about_app_subtitle", lang),
-                    badgeText = "v1.1",
+                    badgeText = "v1.2",
                     icon = Icons.Default.Info,
-                    accentColor = PrimaryGreen,
+                    accentColor = themePrimary,
                     onClick = { currentSection = SettingsSection.ABOUT },
                     tag = "settings_card_about"
                 )
@@ -261,6 +287,13 @@ fun SettingsScreen(
         SettingsSection.STORE_PROFILE -> StoreProfileSettingsScreen(
             viewModel = viewModel,
             storeProfile = storeProfile,
+            onBack = { currentSection = SettingsSection.HUB }
+        )
+
+        SettingsSection.LICENSE_STATUS -> LicenseStatusSettingsScreen(
+            licenseInfo = licenseInfo,
+            storeName = storeProfile.storeName,
+            lang = lang,
             onBack = { currentSection = SettingsSection.HUB }
         )
 
@@ -304,6 +337,7 @@ fun SettingsScreen(
             onBack = { currentSection = SettingsSection.HUB }
         )
         }
+        }
     }
 }
 
@@ -317,14 +351,12 @@ private fun SettingsMenuCard(
     tag: String,
     badgeText: String? = null
 ) {
-    Card(
+    SoftElevatedCard(
+        onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .testTag(tag),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .testTag(tag)
     ) {
         Row(
             modifier = Modifier
@@ -371,15 +403,17 @@ private fun SettingsMenuCard(
             if (!badgeText.isNullOrBlank()) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Surface(
-                    color = accentColor.copy(alpha = 0.12f),
+                    color = accentColor.copy(alpha = 0.13f),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
                         text = badgeText,
                         color = accentColor,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.ExtraBold,
                         fontSize = 11.sp,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        maxLines = 1,
+                        softWrap = false,
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
                     )
                 }
             }
@@ -391,5 +425,248 @@ private fun SettingsMenuCard(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+private fun LicenseStatusSettingsScreen(
+    licenseInfo: com.example.util.LicenseInfo,
+    storeName: String,
+    lang: String,
+    onBack: () -> Unit
+) {
+    val context = LocalContext.current
+    val themePrimary = MaterialTheme.colorScheme.primary
+    var showFullLicenseCode by remember { mutableStateOf(false) }
+
+    val deviceId = remember(licenseInfo.registeredDeviceId) {
+        licenseInfo.registeredDeviceId.ifBlank { LicenseManager.getDeviceId(context) }
+    }
+    val displayedCode = if (licenseInfo.licenseCode.isBlank()) {
+        "-"
+    } else if (showFullLicenseCode) {
+        licenseInfo.licenseCode
+    } else {
+        LicenseManager.maskLicenseCode(licenseInfo.licenseCode)
+    }
+    val registeredBusiness = licenseInfo.businessName.ifBlank { storeName }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        SettingsSubHeader(
+            title = "Status Lisensi Perangkat",
+            subtitle = "Lisensi 1 Perangkat • 100% Offline Lokal",
+            lang = lang,
+            onBack = onBack
+        )
+
+        // Hero Status Card with guaranteed single-line AKTIF pill
+        SoftElevatedCard(
+            shape = RoundedCornerShape(16.dp),
+            borderColor = themePrimary.copy(alpha = 0.35f),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("license_detail_status_card")
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(13.dp))
+                        .background(themePrimary.copy(alpha = 0.14f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.VerifiedUser,
+                        contentDescription = null,
+                        tint = themePrimary,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Lisensi Aktif Permanen",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Terikat pada perangkat ini • 100% Offline Lokal",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 11.5.sp
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = themePrimary.copy(alpha = 0.15f)
+                ) {
+                    Text(
+                        text = "AKTIF",
+                        color = themePrimary,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        softWrap = false,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                    )
+                }
+            }
+        }
+
+        // License Details Card
+        SoftElevatedCard(
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("license_detail_info_card")
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Registered Business Name
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Nama Usaha Terdaftar",
+                        fontSize = 11.5.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = registeredBusiness,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                // License Code Row with Show/Hide Toggle
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Kode Lisensi",
+                            fontSize = 11.5.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = displayedCode,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    if (licenseInfo.licenseCode.isNotBlank()) {
+                        IconButton(
+                            onClick = { showFullLicenseCode = !showFullLicenseCode },
+                            modifier = Modifier.testTag("settings_toggle_license_visibility")
+                        ) {
+                            Icon(
+                                imageVector = if (showFullLicenseCode) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = if (showFullLicenseCode) "Sembunyikan kode" else "Tampilkan kode",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                // Device ID Row with Copy Button
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "ID Perangkat Terdaftar (Auto-Restore)",
+                            fontSize = 11.5.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = deviceId,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            clipboard.setPrimaryClip(ClipData.newPlainText("Device ID", deviceId))
+                            Toast.makeText(context, "ID Perangkat disalin", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.testTag("settings_copy_device_id")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ContentCopy,
+                            contentDescription = "Salin ID Perangkat",
+                            tint = themePrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Info Note Card (No logout button — 1-device offline permanence)
+        SoftElevatedCard(
+            shape = RoundedCornerShape(16.dp),
+            borderColor = themePrimary.copy(alpha = 0.22f),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Shield,
+                    contentDescription = null,
+                    tint = themePrimary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "Lisensi aktif permanen untuk perangkat ini. Semua data produk, transaksi, dan pengeluaran tersimpan 100% lokal di memori HP Anda (Offline-First). Jika aplikasi dipasang ulang di perangkat yang sama, lisensi akan dipulihkan otomatis menggunakan ID Perangkat di atas.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 18.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }

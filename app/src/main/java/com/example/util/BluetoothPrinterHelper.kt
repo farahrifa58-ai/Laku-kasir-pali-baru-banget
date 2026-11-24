@@ -171,7 +171,7 @@ object BluetoothPrinterHelper {
                     appendLine(center(line))
                 }
             }
-            appendLine(center("Laku Kasir Pro v1.1"))
+            appendLine(center("Laku Kasir Pro v1.2"))
             appendLine(doubleDivider)
         }
     }

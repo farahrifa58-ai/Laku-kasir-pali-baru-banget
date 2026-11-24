@@ -42,6 +42,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun SplashScreen(
     lang: String = "id",
+    isCheckingLicense: Boolean = false,
     onContinue: () -> Unit
 ) {
     LaunchedEffect(Unit) {
@@ -130,22 +131,38 @@ fun SplashScreen(
 
             Button(
                 onClick = onContinue,
+                enabled = !isCheckingLicense,
                 colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary),
                 shape = RoundedCornerShape(14.dp),
                 modifier = Modifier.testTag("splash_continue_button")
             ) {
-                Text(
-                    text = LakuStrings.get("open_cashier", lang),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
-                    color = Color.White
-                )
-                Spacer(modifier = Modifier.size(8.dp))
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = LakuStrings.get("open_cashier", lang),
-                    tint = Color.White
-                )
+                if (isCheckingLicense) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        color = Color.White,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.size(10.dp))
+                    Text(
+                        text = "Memeriksa lisensi...",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = Color.White
+                    )
+                } else {
+                    Text(
+                        text = LakuStrings.get("open_cashier", lang),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.size(8.dp))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = LakuStrings.get("open_cashier", lang),
+                        tint = Color.White
+                    )
+                }
             }
         }
     }

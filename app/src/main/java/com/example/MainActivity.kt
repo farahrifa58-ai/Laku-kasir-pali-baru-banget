@@ -17,7 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ui.LakuKasirViewModel
 import com.example.ui.Screen
-import com.example.ui.components.LicenseActivationDialog
+import com.example.ui.screens.ActivationScreen
 import com.example.ui.screens.AddEditProductScreen
 import com.example.ui.screens.CheckoutScreen
 import com.example.ui.screens.DashboardScreen
@@ -51,16 +51,19 @@ class MainActivity : ComponentActivity() {
             val currentScreen by viewModel.currentScreen.collectAsState()
             val productToEdit by viewModel.productToEdit.collectAsState()
             val activeReceipt by viewModel.activeReceiptTransaction.collectAsState()
-            val showActivationDialog by viewModel.showActivationDialog.collectAsState()
-            val trialLimitDialogMessage by viewModel.trialLimitDialogMessage.collectAsState()
+            val isCheckingLicense by viewModel.isCheckingLicense.collectAsState()
 
             LakuKasirTheme(themeSetting = if (currentScreen == Screen.SPLASH) "light" else storeProfile.themeMode) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = if (currentScreen == Screen.SPLASH) Color(0xFFE8F5E9) else MaterialTheme.colorScheme.background
                 ) {
-                    // Back button handling
-                    BackHandler(enabled = currentScreen != Screen.POS && currentScreen != Screen.SPLASH) {
+                    // Back button handling (disabled on POS, SPLASH, and ACTIVATION gate)
+                    BackHandler(
+                        enabled = currentScreen != Screen.POS &&
+                                currentScreen != Screen.SPLASH &&
+                                currentScreen != Screen.ACTIVATION
+                    ) {
                         when (currentScreen) {
                             Screen.ADD_EDIT_PRODUCT -> viewModel.navigateTo(Screen.PRODUCTS)
                             Screen.SETTINGS -> viewModel.navigateTo(Screen.POS)
@@ -73,8 +76,13 @@ class MainActivity : ComponentActivity() {
                         Screen.SPLASH -> {
                             SplashScreen(
                                 lang = storeProfile.language,
+                                isCheckingLicense = isCheckingLicense,
                                 onContinue = { viewModel.finishSplash() }
                             )
+                        }
+
+                        Screen.ACTIVATION -> {
+                            ActivationScreen(viewModel = viewModel)
                         }
 
                         Screen.POS -> {
@@ -193,21 +201,6 @@ class MainActivity : ComponentActivity() {
                                 viewModel.navigateTo(Screen.POS)
                             }
                         }
-                    }
-
-                    if (showActivationDialog) {
-                        LicenseActivationDialog(
-                            onDismiss = {
-                                viewModel.closeActivationDialog()
-                                viewModel.clearTrialLimitDialog()
-                            },
-                            onActivated = {
-                                viewModel.closeActivationDialog()
-                                viewModel.clearTrialLimitDialog()
-                            },
-                            sellerPhone = storeProfile.phone.ifBlank { com.example.util.LicenseManager.SELLER_WHATSAPP },
-                            customMessage = trialLimitDialogMessage
-                        )
                     }
                 }
             }

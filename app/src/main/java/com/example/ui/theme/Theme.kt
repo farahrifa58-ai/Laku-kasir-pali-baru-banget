@@ -20,19 +20,20 @@ import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
     primary = DarkEmeraldPrimary,
-    onPrimary = Color(0xFF003915),
+    onPrimary = DarkOnEmeraldPrimary,
     primaryContainer = DarkEmeraldContainer,
-    onPrimaryContainer = Color(0xFF90FBB0),
+    onPrimaryContainer = DarkEmeraldPrimary,
     secondary = TealAccent,
     onSecondary = Color.White,
     tertiary = WarmOrange,
     background = DarkBackground,
     surface = DarkSurface,
-    onBackground = Color(0xFFF1F5F9),
-    onSurface = Color(0xFFF1F5F9),
+    onBackground = DarkTextPrimary,
+    onSurface = DarkTextPrimary,
     surfaceVariant = DarkSurfaceVariant,
-    onSurfaceVariant = Color(0xFFCBD5E1),
-    error = DangerRed
+    onSurfaceVariant = DarkTextSecondary,
+    outlineVariant = DarkBorder,
+    error = DarkDangerRed
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -47,8 +48,9 @@ private val LightColorScheme = lightColorScheme(
     surface = SoftCardSurface,
     onBackground = Color(0xFF0F172A),
     onSurface = Color(0xFF0F172A),
-    surfaceVariant = Color(0xFFF1F5F9),
-    onSurfaceVariant = Color(0xFF475569),
+    surfaceVariant = Color(0xFFEDF3EF),
+    onSurfaceVariant = Color(0xFF64748B),
+    outlineVariant = SoftCardBorder,
     error = DangerRed
 )
 

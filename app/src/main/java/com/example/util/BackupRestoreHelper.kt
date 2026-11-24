@@ -39,7 +39,7 @@ object BackupRestoreHelper {
         try {
             val root = JSONObject()
             root.put("app", "Laku Kasir Pro")
-            root.put("version", "1.1")
+            root.put("version", "1.2")
             root.put("timestamp", System.currentTimeMillis())
 
             // Store Profile

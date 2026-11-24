@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -61,10 +64,13 @@ import com.example.data.model.StoreProfile
 import com.example.data.model.Transaction
 import com.example.ui.LakuKasirViewModel
 import com.example.ui.Screen
-import com.example.ui.components.AppBottomBar
-import com.example.ui.components.AppTopBar
+import com.example.ui.components.AppNavigationShell
 import com.example.ui.components.CompactSearchBar
+import com.example.ui.components.SoftElevatedCard
 import com.example.ui.theme.DangerRed
+import com.example.ui.theme.DarkBackground
+import com.example.ui.theme.DarkDangerRed
+import com.example.ui.theme.DarkEmeraldPrimary
 import com.example.ui.theme.EmeraldGreenDark
 import com.example.ui.theme.EmeraldGreenPrimary
 import com.example.ui.theme.StatusDebt
@@ -86,6 +92,14 @@ fun HistoryScreen(
     val transactions by viewModel.allTransactions.collectAsState()
     val cart by viewModel.cart.collectAsState()
 
+    val isDark = MaterialTheme.colorScheme.background == DarkBackground
+    val accentGreen = MaterialTheme.colorScheme.primary
+    val onAccentGreen = MaterialTheme.colorScheme.onPrimary
+    val accentGreenText = if (isDark) DarkEmeraldPrimary else EmeraldGreenDark
+    val accentRed = if (isDark) DarkDangerRed else DangerRed
+    val paidAccent = if (isDark) DarkEmeraldPrimary else StatusPaid
+    val debtAccent = if (isDark) Color(0xFFFB923C) else StatusDebt
+
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("all") } // all, paid, debt
     var transactionToDelete by remember { mutableStateOf<Transaction?>(null) }
@@ -103,28 +117,20 @@ fun HistoryScreen(
         matchesQuery && matchesFilter
     }
 
-    Scaffold(
-        topBar = {
-            AppTopBar(
-                title = LakuStrings.get("nav_history", lang),
-                storeProfile = storeProfile,
-                onSettingsClick = onOpenSettings
-            )
-        },
-        bottomBar = {
-            AppBottomBar(
-                currentScreen = Screen.HISTORY,
-                cartItemCount = cart.size,
-                lang = lang,
-                onNavigate = onNavigate
-            )
-        }
-    ) { innerPadding ->
+    AppNavigationShell(
+        title = LakuStrings.get("nav_history", lang),
+        currentScreen = Screen.HISTORY,
+        storeProfile = storeProfile,
+        cartItemCount = cart.size,
+        onNavigate = onNavigate,
+        onOpenSettings = onOpenSettings
+    ) { layoutInfo, innerPadding ->
+        val listColumns = if (layoutInfo.screenWidth >= 960.dp) 2 else 1
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 14.dp, vertical = 8.dp)
+                .padding(horizontal = if (layoutInfo.useSidebarNavigation) 20.dp else 14.dp, vertical = 10.dp)
         ) {
             // Search Bar
             CompactSearchBar(
@@ -146,10 +152,18 @@ fun HistoryScreen(
                 FilterChip(
                     selected = selectedFilter == "all",
                     onClick = { selectedFilter = "all" },
-                    label = { Text("${LakuStrings.get("filter_all", lang)} (${transactions.size})", fontSize = 12.sp) },
+                    label = { Text("${LakuStrings.get("filter_all", lang)} (${transactions.size})", fontSize = 12.sp, fontWeight = if (selectedFilter == "all") FontWeight.Bold else FontWeight.Medium) },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = EmeraldGreenPrimary,
-                        selectedLabelColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        labelColor = MaterialTheme.colorScheme.onSurface,
+                        selectedContainerColor = accentGreen,
+                        selectedLabelColor = onAccentGreen
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = true,
+                        selected = selectedFilter == "all",
+                        borderColor = MaterialTheme.colorScheme.outlineVariant,
+                        selectedBorderColor = Color.Transparent
                     ),
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -157,10 +171,18 @@ fun HistoryScreen(
                 FilterChip(
                     selected = selectedFilter == "paid",
                     onClick = { selectedFilter = "paid" },
-                    label = { Text("${LakuStrings.get("filter_paid", lang)} (${transactions.count { it.isPaid }})", fontSize = 12.sp) },
+                    label = { Text("${LakuStrings.get("filter_paid", lang)} (${transactions.count { it.isPaid }})", fontSize = 12.sp, fontWeight = if (selectedFilter == "paid") FontWeight.Bold else FontWeight.Medium) },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = StatusPaid,
-                        selectedLabelColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        labelColor = MaterialTheme.colorScheme.onSurface,
+                        selectedContainerColor = accentGreen,
+                        selectedLabelColor = onAccentGreen
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = true,
+                        selected = selectedFilter == "paid",
+                        borderColor = MaterialTheme.colorScheme.outlineVariant,
+                        selectedBorderColor = Color.Transparent
                     ),
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -168,10 +190,18 @@ fun HistoryScreen(
                 FilterChip(
                     selected = selectedFilter == "debt",
                     onClick = { selectedFilter = "debt" },
-                    label = { Text("${LakuStrings.get("filter_debt", lang)} (${transactions.count { !it.isPaid }})", fontSize = 12.sp) },
+                    label = { Text("${LakuStrings.get("filter_debt", lang)} (${transactions.count { !it.isPaid }})", fontSize = 12.sp, fontWeight = if (selectedFilter == "debt") FontWeight.Bold else FontWeight.Medium) },
                     colors = FilterChipDefaults.filterChipColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        labelColor = MaterialTheme.colorScheme.onSurface,
                         selectedContainerColor = StatusDebt,
                         selectedLabelColor = Color.White
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = true,
+                        selected = selectedFilter == "debt",
+                        borderColor = MaterialTheme.colorScheme.outlineVariant,
+                        selectedBorderColor = Color.Transparent
                     ),
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -187,10 +217,8 @@ fun HistoryScreen(
                         .padding(24.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Card(
+                    SoftElevatedCard(
                         shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(
@@ -200,7 +228,7 @@ fun HistoryScreen(
                             Icon(
                                 imageVector = Icons.Default.ReceiptLong,
                                 contentDescription = null,
-                                tint = EmeraldGreenPrimary,
+                                tint = accentGreen,
                                 modifier = Modifier.size(48.dp)
                             )
                             Spacer(modifier = Modifier.height(14.dp))
@@ -219,10 +247,10 @@ fun HistoryScreen(
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(
                                 onClick = { onNavigate(Screen.POS) },
-                                colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary),
+                                colors = ButtonDefaults.buttonColors(containerColor = accentGreen, contentColor = onAccentGreen),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
-                                Text(LakuStrings.get("open_cashier_menu", lang), fontWeight = FontWeight.Bold, color = Color.White)
+                                Text(LakuStrings.get("open_cashier_menu", lang), fontWeight = FontWeight.Bold, color = onAccentGreen)
                             }
                         }
                     }
@@ -235,18 +263,17 @@ fun HistoryScreen(
                     Text(LakuStrings.get("no_matching_transactions", lang), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(bottom = 80.dp)
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(listColumns),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(top = 4.dp, bottom = 80.dp)
                 ) {
-                    items(filtered, key = { it.id }) { tx ->
-                        Card(
-                            shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onSelectTransaction(tx) }
+                    gridItems(filtered, key = { it.id }) { tx ->
+                        SoftElevatedCard(
+                            shape = RoundedCornerShape(16.dp),
+                            onClick = { onSelectTransaction(tx) },
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
                                 Row(
@@ -270,13 +297,13 @@ fun HistoryScreen(
                                     // Status Badge (Lunas / Kasbon)
                                     Surface(
                                         shape = RoundedCornerShape(6.dp),
-                                        color = if (tx.isPaid) StatusPaid.copy(alpha = 0.12f) else StatusDebt.copy(alpha = 0.12f)
+                                        color = if (tx.isPaid) paidAccent.copy(alpha = 0.14f) else debtAccent.copy(alpha = 0.14f)
                                     ) {
                                         Text(
                                             text = if (tx.isPaid) LakuStrings.get("paid_badge", lang) else LakuStrings.get("debt_badge", lang),
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 11.sp,
-                                            color = if (tx.isPaid) StatusPaid else StatusDebt,
+                                            color = if (tx.isPaid) paidAccent else debtAccent,
                                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                         )
                                     }
@@ -321,7 +348,7 @@ fun HistoryScreen(
                                             text = FormatUtils.formatRupiah(tx.total),
                                             fontWeight = FontWeight.ExtraBold,
                                             fontSize = 16.sp,
-                                            color = EmeraldGreenDark
+                                            color = accentGreenText
                                         )
                                     }
 
@@ -330,14 +357,14 @@ fun HistoryScreen(
                                         if (!tx.isPaid) {
                                             Button(
                                                 onClick = { viewModel.markTransactionAsPaid(tx) },
-                                                colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary),
+                                                colors = ButtonDefaults.buttonColors(containerColor = accentGreen, contentColor = onAccentGreen),
                                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                                                 shape = RoundedCornerShape(8.dp),
                                                 modifier = Modifier.height(32.dp)
                                             ) {
-                                                Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                                                Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = onAccentGreen, modifier = Modifier.size(14.dp))
                                                 Spacer(modifier = Modifier.width(4.dp))
-                                                Text(LakuStrings.get("mark_paid_btn", lang), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                                Text(LakuStrings.get("mark_paid_btn", lang), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = onAccentGreen)
                                             }
                                             Spacer(modifier = Modifier.width(8.dp))
                                         }
@@ -363,7 +390,7 @@ fun HistoryScreen(
                                             onClick = { onSelectTransaction(tx) },
                                             modifier = Modifier.size(32.dp)
                                         ) {
-                                            Icon(imageVector = Icons.Default.ReceiptLong, contentDescription = LakuStrings.get("view_receipt", lang), tint = EmeraldGreenPrimary)
+                                            Icon(imageVector = Icons.Default.ReceiptLong, contentDescription = LakuStrings.get("view_receipt", lang), tint = accentGreen)
                                         }
 
                                         // Delete transaction
@@ -371,7 +398,7 @@ fun HistoryScreen(
                                             onClick = { transactionToDelete = tx },
                                             modifier = Modifier.size(32.dp)
                                         ) {
-                                            Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = LakuStrings.get("delete", lang), tint = DangerRed)
+                                            Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = LakuStrings.get("delete", lang), tint = accentRed)
                                         }
                                     }
                                 }

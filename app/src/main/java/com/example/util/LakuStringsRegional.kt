@@ -26,7 +26,7 @@ internal object LakuStringsRegional {
     }
 
     private fun getMalay(key: String): String? = when (key) {
-        "version" -> "Versi 1.1"
+        "version" -> "Versi 1.2"
         "open_cashier" -> "Buka Kaunter"
         "save" -> "Simpan"
         "save_changes" -> "Simpan Perubahan"
@@ -60,7 +60,7 @@ internal object LakuStringsRegional {
         "backup_restore" -> "Sandaran & Pemulihan"
         "backup_restore_card_desc" -> "Sandaran manual & pulihkan data kedai (JSON)"
         "about_app" -> "Tentang Aplikasi"
-        "about_app_subtitle" -> "Laku Kasir Pro • Rafline Dev • Versi 1.1"
+        "about_app_subtitle" -> "Laku Kasir Pro • Rafline Dev • Versi 1.2"
         "store_name" -> "Nama Kedai"
         "owner_name" -> "Pemilik / Juruwang"
         "store_address" -> "Alamat Kedai"
@@ -159,7 +159,7 @@ internal object LakuStringsRegional {
     }
 
     private fun getVietnamese(key: String): String? = when (key) {
-        "version" -> "Phiên bản 1.1"
+        "version" -> "Phiên bản 1.2"
         "open_cashier" -> "Mở Thu Ngân"
         "save" -> "Lưu"
         "save_changes" -> "Lưu thay đổi"
@@ -247,7 +247,7 @@ internal object LakuStringsRegional {
     }
 
     private fun getThai(key: String): String? = when (key) {
-        "version" -> "เวอร์ชัน 1.1"
+        "version" -> "เวอร์ชัน 1.2"
         "open_cashier" -> "เปิดแคชเชียร์"
         "save" -> "บันทึก"
         "save_changes" -> "บันทึกการเปลี่ยนแปลง"
@@ -326,7 +326,7 @@ internal object LakuStringsRegional {
     }
 
     private fun getFilipino(key: String): String? = when (key) {
-        "version" -> "Bersyon 1.1"
+        "version" -> "Bersyon 1.2"
         "open_cashier" -> "Buksan ang Kahera"
         "save" -> "I-save"
         "save_changes" -> "I-save ang mga Pagbabago"
@@ -386,7 +386,7 @@ internal object LakuStringsRegional {
     }
 
     private fun getJapanese(key: String): String? = when (key) {
-        "version" -> "バージョン 1.1"
+        "version" -> "バージョン 1.2"
         "open_cashier" -> "レジを開く"
         "save" -> "保存"
         "save_changes" -> "変更を保存"
@@ -466,7 +466,7 @@ internal object LakuStringsRegional {
     }
 
     private fun getKorean(key: String): String? = when (key) {
-        "version" -> "버전 1.1"
+        "version" -> "버전 1.2"
         "open_cashier" -> "포스기 열기"
         "save" -> "저장"
         "save_changes" -> "변경사항 저장"
@@ -545,7 +545,7 @@ internal object LakuStringsRegional {
     }
 
     private fun getChinese(key: String): String? = when (key) {
-        "version" -> "版本 1.1"
+        "version" -> "版本 1.2"
         "open_cashier" -> "打开收银台"
         "save" -> "保存"
         "save_changes" -> "保存更改"
@@ -624,7 +624,7 @@ internal object LakuStringsRegional {
     }
 
     private fun getHindi(key: String): String? = when (key) {
-        "version" -> "संस्करण 1.1"
+        "version" -> "संस्करण 1.2"
         "open_cashier" -> "कैशियर खोलें"
         "save" -> "सहेजें"
         "cancel" -> "रद्द करें"
@@ -676,7 +676,7 @@ internal object LakuStringsRegional {
     }
 
     private fun getArabic(key: String): String? = when (key) {
-        "version" -> "الإصدار 1.1"
+        "version" -> "الإصدار 1.2"
         "open_cashier" -> "فتح نقطة البيع"
         "save" -> "حفظ"
         "save_changes" -> "حفظ التغييرات"
@@ -742,7 +742,7 @@ internal object LakuStringsRegional {
     }
 
     private fun getRussian(key: String): String? = when (key) {
-        "version" -> "Версия 1.1"
+        "version" -> "Версия 1.2"
         "open_cashier" -> "Открыть кассу"
         "save" -> "Сохранить"
         "save_changes" -> "Сохранить изменения"
@@ -810,7 +810,7 @@ internal object LakuStringsRegional {
     }
 
     private fun getGerman(key: String): String? = when (key) {
-        "version" -> "Version 1.1"
+        "version" -> "Version 1.2"
         "open_cashier" -> "Kasse öffnen"
         "save" -> "Speichern"
         "cancel" -> "Abbrechen"
@@ -862,7 +862,7 @@ internal object LakuStringsRegional {
     }
 
     private fun getFrench(key: String): String? = when (key) {
-        "version" -> "Version 1.1"
+        "version" -> "Version 1.2"
         "open_cashier" -> "Ouvrir la caisse"
         "save" -> "Enregistrer"
         "cancel" -> "Annuler"
@@ -914,7 +914,7 @@ internal object LakuStringsRegional {
     }
 
     private fun getSpanish(key: String): String? = when (key) {
-        "version" -> "Versión 1.1"
+        "version" -> "Versión 1.2"
         "open_cashier" -> "Abrir Caja"
         "save" -> "Guardar"
         "cancel" -> "Cancelar"
@@ -966,7 +966,7 @@ internal object LakuStringsRegional {
     }
 
     private fun getItalian(key: String): String? = when (key) {
-        "version" -> "Versione 1.1"
+        "version" -> "Versione 1.2"
         "open_cashier" -> "Apri Cassa"
         "save" -> "Salva"
         "cancel" -> "Annulla"
@@ -1018,7 +1018,7 @@ internal object LakuStringsRegional {
     }
 
     private fun getDutch(key: String): String? = when (key) {
-        "version" -> "Versie 1.1"
+        "version" -> "Versie 1.2"
         "open_cashier" -> "Open Kassa"
         "save" -> "Opslaan"
         "cancel" -> "Annuleren"
@@ -1070,7 +1070,7 @@ internal object LakuStringsRegional {
     }
 
     private fun getPortuguese(key: String): String? = when (key) {
-        "version" -> "Versão 1.1"
+        "version" -> "Versão 1.2"
         "open_cashier" -> "Abrir Caixa"
         "save" -> "Salvar"
         "cancel" -> "Cancelar"
@@ -1122,7 +1122,7 @@ internal object LakuStringsRegional {
     }
 
     private fun getSwahili(key: String): String? = when (key) {
-        "version" -> "Toleo 1.1"
+        "version" -> "Toleo 1.2"
         "open_cashier" -> "Fungua Keshia"
         "save" -> "Hifadhi"
         "cancel" -> "Ghairi"

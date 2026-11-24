@@ -10,7 +10,12 @@ import com.example.data.model.Product
 import com.example.data.model.StoreProfile
 import com.example.data.model.Transaction
 import com.example.data.model.TransactionItem
+import com.example.util.ActivationResult
 import com.example.util.FormatUtils
+import com.example.util.ImageUtils
+import com.example.util.LicenseInfo
+import com.example.util.LicenseManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +23,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -35,6 +43,7 @@ data class CartItem(
 
 enum class Screen {
     SPLASH,
+    ACTIVATION,
     POS,
     CHECKOUT,
     PRODUCTS,
@@ -55,11 +64,17 @@ class LakuKasirViewModel(application: Application) : AndroidViewModel(applicatio
 
     val storeProfile: StateFlow<StoreProfile> = prefsManager.storeProfile
 
-    val isProLicense: StateFlow<Boolean> = com.example.util.LicenseManager.isProFlow
+    val licenseInfo: StateFlow<LicenseInfo> = LicenseManager.licenseInfoFlow
+    val isProLicense: StateFlow<Boolean> = LicenseManager.isProFlow
 
-    // Trial Limit & Activation Dialog States
-    val trialLimitDialogMessage = MutableStateFlow<String?>(null)
-    val showActivationDialog = MutableStateFlow(false)
+    private val _isCheckingLicense = MutableStateFlow(false)
+    val isCheckingLicense: StateFlow<Boolean> = _isCheckingLicense.asStateFlow()
+
+    private val _isActivating = MutableStateFlow(false)
+    val isActivating: StateFlow<Boolean> = _isActivating.asStateFlow()
+
+    private val _activationError = MutableStateFlow<String?>(null)
+    val activationError: StateFlow<String?> = _activationError.asStateFlow()
 
     // Navigation state
     private val _currentScreen = MutableStateFlow(Screen.SPLASH)
@@ -69,9 +84,11 @@ class LakuKasirViewModel(application: Application) : AndroidViewModel(applicatio
     private val _splashFinished = MutableStateFlow(false)
     val splashFinished: StateFlow<Boolean> = _splashFinished.asStateFlow()
 
-    // Products Flow
+    private val sampleSeedMutex = Mutex()
+
+    // Products Flow (Eagerly started so seeded/saved products are ready immediately without empty-state flash)
     val allProducts: StateFlow<List<Product>> = productDao.getAllProducts()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     // Transactions Flow
     val allTransactions: StateFlow<List<Transaction>> = transactionDao.getAllTransactions()
@@ -98,7 +115,7 @@ class LakuKasirViewModel(application: Application) : AndroidViewModel(applicatio
             val matchCategory = cat == "Semua" || p.category.equals(cat, ignoreCase = true)
             matchQuery && matchCategory
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     // Cart State
     private val _cart = MutableStateFlow<List<CartItem>>(emptyList())
@@ -125,7 +142,111 @@ class LakuKasirViewModel(application: Application) : AndroidViewModel(applicatio
     val dashboardPeriod = MutableStateFlow("today")
 
     init {
-        com.example.util.LicenseManager.init(application)
+        LicenseManager.init(application)
+        // Seed 4 contoh produk awal (bisa diedit & dihapus permanen, termasuk 1 satuan kg) satu kali saja
+        if (!prefsManager.hasSeededSampleProducts()) {
+            viewModelScope.launch {
+                seedSampleProductsOnce()
+            }
+        }
+        // Prefetch auto-restore in background during Splash if not yet licensed locally
+        if (!LicenseManager.isLicensedLocally(application)) {
+            viewModelScope.launch {
+                _isCheckingLicense.value = true
+                val restored = LicenseManager.attemptAutoRestore(application)
+                if (restored != null) {
+                    syncBusinessNameToStoreProfile(restored.businessName)
+                }
+                _isCheckingLicense.value = false
+            }
+        }
+    }
+
+    private fun buildSampleProducts(): List<Product> = listOf(
+        Product(
+            name = "Kopi Susu Gula Aren",
+            category = "Makanan & Minuman",
+            unit = "pcs",
+            barcode = "LKP-1001",
+            costPrice = 8000.0,
+            sellingPrice = 18000.0,
+            stock = 50.0,
+            isUnlimitedStock = false,
+            minStockAlert = 5.0,
+            supplierName = "Kopi Nusantara",
+            supplierPhone = "081234567890",
+            imageUri = ImageUtils.SAMPLE_IMG_KOPI_AREN
+        ),
+        Product(
+            name = "Roti Bakar Cokelat Keju",
+            category = "Makanan & Minuman",
+            unit = "pcs",
+            barcode = "LKP-1002",
+            costPrice = 10000.0,
+            sellingPrice = 22000.0,
+            stock = 30.0,
+            isUnlimitedStock = false,
+            minStockAlert = 5.0,
+            supplierName = "Bakery Indo",
+            supplierPhone = "081234567891",
+            imageUri = ImageUtils.SAMPLE_IMG_ROTI_BAKAR
+        ),
+        Product(
+            name = "Beras Premium Pulen",
+            category = "Sembako",
+            unit = "kg",
+            barcode = "LKP-1003",
+            costPrice = 13500.0,
+            sellingPrice = 16000.0,
+            stock = 45.0,
+            isUnlimitedStock = false,
+            minStockAlert = 10.0,
+            supplierName = "Sumber Pangan Jaya",
+            supplierPhone = "081234567892",
+            imageUri = ImageUtils.SAMPLE_IMG_BERAS_PREMIUM
+        ),
+        Product(
+            name = "Minyak Goreng Kemasan 1L",
+            category = "Sembako",
+            unit = "pcs",
+            barcode = "LKP-1004",
+            costPrice = 14500.0,
+            sellingPrice = 17500.0,
+            stock = 40.0,
+            isUnlimitedStock = false,
+            minStockAlert = 8.0,
+            supplierName = "Distributor Sembako Makmur",
+            supplierPhone = "081234567893",
+            imageUri = ImageUtils.SAMPLE_IMG_MINYAK_GORENG
+        )
+    )
+
+    private suspend fun seedSampleProductsOnce() = sampleSeedMutex.withLock {
+        if (prefsManager.hasSeededSampleProducts()) return@withLock
+        try {
+            withContext(Dispatchers.IO) {
+                buildSampleProducts().forEach { sample ->
+                    if (productDao.getProductByBarcode(sample.barcode) == null) {
+                        productDao.insert(sample)
+                    }
+                }
+                if (productDao.getProductCount() > 0) {
+                    prefsManager.setSampleProductsSeeded(true)
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun syncBusinessNameToStoreProfile(businessName: String) {
+        val cleanName = businessName.trim()
+        if (cleanName.isNotBlank()) {
+            val current = storeProfile.value
+            if (current.storeName != cleanName) {
+                prefsManager.saveStoreProfile(current.copy(storeName = cleanName))
+            }
+        }
     }
 
     private fun formatDefaultDiscount(profile: StoreProfile): String {
@@ -141,33 +262,82 @@ class LakuKasirViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun openActivationDialog() {
-        showActivationDialog.value = true
+    fun clearActivationError() {
+        _activationError.value = null
     }
 
-    fun closeActivationDialog() {
-        showActivationDialog.value = false
+    fun submitActivation(businessName: String, rawCode: String) {
+        if (_isActivating.value) return
+        val appContext = getApplication<Application>()
+        viewModelScope.launch {
+            _isActivating.value = true
+            _activationError.value = null
+            when (val result = LicenseManager.activateWithCode(appContext, rawCode, businessName)) {
+                is ActivationResult.Success -> {
+                    syncBusinessNameToStoreProfile(result.info.businessName)
+                    _isActivating.value = false
+                    _currentScreen.value = Screen.POS
+                }
+                ActivationResult.Offline -> {
+                    _isActivating.value = false
+                    _activationError.value = "Tidak ada koneksi internet. Aktivasi pertama kali membutuhkan koneksi internet."
+                }
+                is ActivationResult.Error -> {
+                    _isActivating.value = false
+                    _activationError.value = result.message
+                }
+            }
+        }
     }
 
-    fun clearTrialLimitDialog() {
-        trialLimitDialogMessage.value = null
-    }
-
-    fun activateLicense(key: String): Boolean {
-        return com.example.util.LicenseManager.activateWithKey(key)
-    }
-
-    fun resetToTrial() {
-        com.example.util.LicenseManager.resetToTrial()
+    fun retryAutoRestore(onResult: (Boolean) -> Unit = {}) {
+        if (_isCheckingLicense.value || _isActivating.value) return
+        val appContext = getApplication<Application>()
+        viewModelScope.launch {
+            _isCheckingLicense.value = true
+            _activationError.value = null
+            val restored = LicenseManager.attemptAutoRestore(appContext)
+            _isCheckingLicense.value = false
+            if (restored != null) {
+                syncBusinessNameToStoreProfile(restored.businessName)
+                _currentScreen.value = Screen.POS
+                onResult(true)
+            } else {
+                onResult(false)
+            }
+        }
     }
 
     fun navigateTo(screen: Screen) {
+        if (!LicenseManager.isLicensedLocally(getApplication()) && screen != Screen.SPLASH && screen != Screen.ACTIVATION) {
+            _currentScreen.value = Screen.ACTIVATION
+            return
+        }
         _currentScreen.value = screen
     }
 
     fun finishSplash() {
+        if (_splashFinished.value && _currentScreen.value != Screen.SPLASH) return
         _splashFinished.value = true
-        _currentScreen.value = Screen.POS
+        val appContext = getApplication<Application>()
+        viewModelScope.launch {
+            if (!prefsManager.hasSeededSampleProducts()) {
+                seedSampleProductsOnce()
+            }
+            if (LicenseManager.isLicensedLocally(appContext)) {
+                _currentScreen.value = Screen.POS
+                return@launch
+            }
+            _isCheckingLicense.value = true
+            val restored = LicenseManager.attemptAutoRestore(appContext)
+            _isCheckingLicense.value = false
+            if (restored != null) {
+                syncBusinessNameToStoreProfile(restored.businessName)
+                _currentScreen.value = Screen.POS
+            } else {
+                _currentScreen.value = Screen.ACTIVATION
+            }
+        }
     }
 
     // Cart operations
@@ -268,14 +438,6 @@ class LakuKasirViewModel(application: Application) : AndroidViewModel(applicatio
     fun processCheckout(onSuccess: (Transaction) -> Unit) {
         val items = _cart.value
         if (items.isEmpty()) return
-        if (!com.example.util.LicenseManager.isProActivated()) {
-            val currentTxCount = allTransactions.value.size
-            if (currentTxCount >= com.example.util.LicenseManager.MAX_TRIAL_TRANSACTIONS) {
-                trialLimitDialogMessage.value = "Batas Uji Coba Tercapai!\nVersi Trial dibatasi maksimal ${com.example.util.LicenseManager.MAX_TRIAL_TRANSACTIONS} kali transaksi. Silakan aktivasi lisensi PRO untuk melanjutkan transaksi kasir tanpa batas."
-                showActivationDialog.value = true
-                return
-            }
-        }
 
         val now = System.currentTimeMillis()
         val prefix = storeProfile.value.receiptPrefix.trim().ifBlank { "LK" }.uppercase()
@@ -369,15 +531,6 @@ class LakuKasirViewModel(application: Application) : AndroidViewModel(applicatio
         supplierPhone: String,
         imageUri: String?
     ) {
-        if (id == 0L && !com.example.util.LicenseManager.isProActivated()) {
-            val currentProductCount = allProducts.value.size
-            if (currentProductCount >= com.example.util.LicenseManager.MAX_TRIAL_PRODUCTS) {
-                trialLimitDialogMessage.value = "Batas Produk Uji Coba Tercapai!\nVersi Trial dibatasi maksimal ${com.example.util.LicenseManager.MAX_TRIAL_PRODUCTS} produk. Silakan aktivasi lisensi PRO untuk menambahkan produk tanpa batas."
-                showActivationDialog.value = true
-                return
-            }
-        }
-
         viewModelScope.launch {
             val product = Product(
                 id = id,
@@ -406,11 +559,12 @@ class LakuKasirViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun loadDemoSampleProducts() {
         viewModelScope.launch {
-            val sampleItems = listOf(
-                Product(name = "Kopi Susu Gula Aren", category = "Makanan & Minuman", unit = "pcs", barcode = "DEMO-01", costPrice = 8000.0, sellingPrice = 18000.0, stock = 50.0, isUnlimitedStock = false, minStockAlert = 5.0, supplierName = "Kopi Nusantara", supplierPhone = "081234567890"),
-                Product(name = "Roti Bakar Cokelat Keju", category = "Makanan & Minuman", unit = "pcs", barcode = "DEMO-02", costPrice = 10000.0, sellingPrice = 22000.0, stock = 30.0, isUnlimitedStock = false, minStockAlert = 5.0, supplierName = "Bakery Indo", supplierPhone = "081234567890")
-            )
-            sampleItems.forEach { productDao.insert(it) }
+            buildSampleProducts().forEach { sample ->
+                if (productDao.getProductByBarcode(sample.barcode) == null) {
+                    productDao.insert(sample)
+                }
+            }
+            prefsManager.setSampleProductsSeeded(true)
         }
     }
 

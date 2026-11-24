@@ -14,6 +14,12 @@ interface ProductDao {
     @Query("SELECT * FROM products ORDER BY id DESC")
     fun getAllProducts(): Flow<List<Product>>
 
+    @Query("SELECT * FROM products ORDER BY id DESC")
+    suspend fun getAllProductsOnce(): List<Product>
+
+    @Query("SELECT COUNT(*) FROM products")
+    suspend fun getProductCount(): Int
+
     @Query("SELECT * FROM products WHERE id = :id")
     suspend fun getProductById(id: Long): Product?
 

@@ -15,14 +15,19 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -65,6 +70,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -97,15 +103,25 @@ import com.example.data.model.StoreProfile
 import com.example.ui.CartItem
 import com.example.ui.LakuKasirViewModel
 import com.example.ui.Screen
-import com.example.ui.components.AppBottomBar
-import com.example.ui.components.AppTopBar
+import com.example.ui.components.AppNavigationShell
 import com.example.ui.components.BarcodeScannerDialog
 import com.example.ui.components.CompactSearchBar
+import com.example.ui.components.SoftElevatedCard
+import com.example.ui.components.WindowWidthTier
 import com.example.ui.theme.DangerRed
+import com.example.ui.theme.DarkBackground
+import com.example.ui.theme.DarkBorder
+import com.example.ui.theme.DarkDangerRed
+import com.example.ui.theme.DarkEmeraldPrimary
+import com.example.ui.theme.DarkSurface
+import com.example.ui.theme.DarkTextPrimary
+import com.example.ui.theme.DarkTextSecondary
+import com.example.ui.theme.SoftCardBorder
 import com.example.ui.theme.EmeraldGreenDark
 import com.example.ui.theme.EmeraldGreenPrimary
 import com.example.ui.theme.WarningYellow
 import com.example.util.FormatUtils
+import com.example.util.ImageUtils
 import com.example.util.LakuStrings
 import kotlinx.coroutines.launch
 
@@ -126,45 +142,44 @@ fun PosScreen(
     val searchQuery by viewModel.posSearchQuery.collectAsState()
     val selectedCategory by viewModel.posSelectedCategory.collectAsState()
 
-    val isProLicense by viewModel.isProLicense.collectAsState()
-    val allTransactions by viewModel.allTransactions.collectAsState()
-    val trialLimitDialogMessage by viewModel.trialLimitDialogMessage.collectAsState()
-    val showActivationDialog by viewModel.showActivationDialog.collectAsState()
-
     var showCartSheet by remember { mutableStateOf(false) }
     var productForKgDialog by remember { mutableStateOf<Product?>(null) }
     var showBarcodeScanner by remember { mutableStateOf(false) }
 
     val categoriesList = listOf("Semua") + Categories.ALL_CATEGORIES
 
-    Scaffold(
-        topBar = {
-            AppTopBar(
-                title = LakuStrings.get("app_title", lang),
-                storeProfile = storeProfile,
-                onSettingsClick = onOpenSettings,
-                onLicenseBadgeClick = { viewModel.openActivationDialog() }
-            )
-        },
-        bottomBar = {
-            AppBottomBar(
-                currentScreen = Screen.POS,
-                cartItemCount = cart.size,
-                lang = lang,
-                onNavigate = onNavigate
-            )
+    AppNavigationShell(
+        title = LakuStrings.get("app_title", lang),
+        currentScreen = Screen.POS,
+        storeProfile = storeProfile,
+        cartItemCount = cart.size,
+        onNavigate = onNavigate,
+        onOpenSettings = onOpenSettings,
+        maxContentWidth = 1440.dp
+    ) { layoutInfo, innerPadding ->
+        val isDark = MaterialTheme.colorScheme.background == DarkBackground
+        val gridColumns = when (layoutInfo.tier) {
+            WindowWidthTier.EXPANDED -> 4
+            WindowWidthTier.MEDIUM -> 3
+            WindowWidthTier.COMPACT -> 2
         }
-    ) { innerPadding ->
-        Box(
+
+        Row(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            Column(
+            // Left / Main POS Catalog Area
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                    .weight(1f)
+                    .fillMaxHeight()
             ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = if (layoutInfo.useSidebarNavigation) 18.dp else 14.dp, vertical = 10.dp)
+                ) {
 
                 // Search Bar with Barcode Scanner Button
                 Row(
@@ -186,7 +201,7 @@ fun PosScreen(
                     Surface(
                         onClick = { showBarcodeScanner = true },
                         shape = RoundedCornerShape(12.dp),
-                        color = EmeraldGreenPrimary,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
                             .size(42.dp)
                             .testTag("pos_scan_barcode_button")
@@ -195,7 +210,7 @@ fun PosScreen(
                             Icon(
                                 imageVector = Icons.Default.QrCodeScanner,
                                 contentDescription = LakuStrings.get("scan_barcode_title", lang),
-                                tint = Color.White,
+                                tint = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(22.dp)
                             )
                         }
@@ -217,8 +232,15 @@ fun PosScreen(
                             onClick = { viewModel.posSelectedCategory.value = cat },
                             label = { Text(displayCat, fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = EmeraldGreenPrimary,
-                                selectedLabelColor = Color.White
+                                containerColor = MaterialTheme.colorScheme.surface,
+                                labelColor = MaterialTheme.colorScheme.onSurface,
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = isSelected,
+                                borderColor = MaterialTheme.colorScheme.outlineVariant
                             ),
                             shape = RoundedCornerShape(20.dp)
                         )
@@ -236,10 +258,8 @@ fun PosScreen(
                             .padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Card(
+                        SoftElevatedCard(
                             shape = RoundedCornerShape(20.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(
@@ -247,17 +267,21 @@ fun PosScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                             ) {
+                                val isDark = MaterialTheme.colorScheme.background == DarkBackground
+                                val accentGreen = MaterialTheme.colorScheme.primary
+                                val onAccentGreen = MaterialTheme.colorScheme.onPrimary
+                                val accentGreenText = if (isDark) DarkEmeraldPrimary else EmeraldGreenDark
                                 Box(
                                     modifier = Modifier
                                         .size(72.dp)
                                         .clip(CircleShape)
-                                        .background(EmeraldGreenPrimary.copy(alpha = 0.12f)),
+                                        .background(accentGreen.copy(alpha = 0.14f)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Inventory,
                                         contentDescription = null,
-                                        tint = EmeraldGreenPrimary,
+                                        tint = accentGreen,
                                         modifier = Modifier.size(36.dp)
                                     )
                                 }
@@ -266,7 +290,7 @@ fun PosScreen(
                                     text = LakuStrings.get("no_products", lang),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 18.sp,
-                                    color = EmeraldGreenDark
+                                    color = accentGreenText
                                 )
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
@@ -281,32 +305,30 @@ fun PosScreen(
                                         viewModel.productToEdit.value = null
                                         onNavigate(Screen.ADD_EDIT_PRODUCT)
                                     },
-                                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary),
+                                    colors = ButtonDefaults.buttonColors(containerColor = accentGreen, contentColor = onAccentGreen),
                                     shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .testTag("pos_empty_add_product_button")
                                 ) {
-                                    Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = Color.White)
+                                    Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = onAccentGreen)
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text(LakuStrings.get("add_product_btn", lang), fontWeight = FontWeight.Bold, color = Color.White)
+                                    Text(LakuStrings.get("add_product_btn", lang), fontWeight = FontWeight.Bold, color = onAccentGreen)
                                 }
-
-                                if (!isProLicense) {
-                                    Spacer(modifier = Modifier.height(10.dp))
-                                    OutlinedButton(
-                                        onClick = { viewModel.loadDemoSampleProducts() },
-                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = EmeraldGreenDark),
-                                        border = BorderStroke(1.dp, EmeraldGreenPrimary),
-                                        shape = RoundedCornerShape(12.dp),
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .testTag("pos_load_demo_products_button")
-                                    ) {
-                                        Icon(Icons.Default.Stars, contentDescription = null, tint = Color(0xFFF57C00), modifier = Modifier.size(16.dp))
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(LakuStrings.get("load_demo_products", lang), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                                    }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedButton(
+                                    onClick = { viewModel.loadDemoSampleProducts() },
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, accentGreen.copy(alpha = 0.5f)),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag("pos_load_sample_products_button")
+                                ) {
+                                    Text(
+                                        text = "Muat 4 Contoh Produk",
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = accentGreenText
+                                    )
                                 }
                             }
                         }
@@ -326,11 +348,17 @@ fun PosScreen(
                         )
                     }
                 } else {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        contentPadding = PaddingValues(bottom = if (cart.isNotEmpty()) 80.dp else 16.dp)
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(gridColumns),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(
+                            top = 2.dp,
+                            bottom = if (!layoutInfo.useSplitPosView && cart.isNotEmpty()) 88.dp else 14.dp
+                        ),
+                        modifier = Modifier.fillMaxSize()
                     ) {
-                        items(products, key = { it.id }) { product ->
+                        gridItems(products, key = { it.id }) { product ->
                             PosProductCard(
                                 product = product,
                                 cartQuantity = cart.firstOrNull { it.product.id == product.id }?.quantity ?: 0.0,
@@ -355,16 +383,18 @@ fun PosScreen(
                 }
             }
 
-            // Bottom Floating Cart Bar
-            if (cart.isNotEmpty()) {
+            // Bottom Floating Cart Bar (Phone & Tablet < 1024.dp only)
+            if (!layoutInfo.useSplitPosView && cart.isNotEmpty()) {
                 Surface(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(horizontal = 14.dp, vertical = 10.dp)
+                        .widthIn(max = 560.dp)
                         .fillMaxWidth(),
                     shape = RoundedCornerShape(18.dp),
                     shadowElevation = 8.dp,
-                    color = EmeraldGreenDark
+                    color = if (isDark) DarkSurface else EmeraldGreenDark,
+                    border = if (isDark) BorderStroke(1.dp, DarkEmeraldPrimary.copy(alpha = 0.55f)) else null
                 ) {
                     Row(
                         modifier = Modifier
@@ -377,8 +407,8 @@ fun PosScreen(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Badge(
-                                containerColor = Color.White,
-                                contentColor = EmeraldGreenDark
+                                containerColor = if (isDark) DarkEmeraldPrimary else Color.White,
+                                contentColor = if (isDark) MaterialTheme.colorScheme.onPrimary else EmeraldGreenDark
                             ) {
                                 Text(
                                     text = "${cart.size}",
@@ -392,37 +422,102 @@ fun PosScreen(
                                 Text(
                                     text = "${cart.size} ${LakuStrings.get("items_in_cart", lang)}",
                                     fontSize = 12.sp,
-                                    color = Color.White.copy(alpha = 0.9f)
+                                    color = if (isDark) DarkTextSecondary else Color.White.copy(alpha = 0.9f)
                                 )
                                 Text(
                                     text = FormatUtils.formatRupiah(viewModel.cartSubtotal),
                                     fontWeight = FontWeight.ExtraBold,
                                     fontSize = 17.sp,
-                                    color = Color.White
+                                    color = if (isDark) DarkTextPrimary else Color.White
                                 )
                             }
                         }
 
                         Button(
                             onClick = { showCartSheet = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isDark) DarkEmeraldPrimary else Color.White,
+                                contentColor = if (isDark) MaterialTheme.colorScheme.onPrimary else EmeraldGreenDark
+                            ),
                             shape = RoundedCornerShape(12.dp),
                             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.ShoppingCart,
                                 contentDescription = null,
-                                tint = EmeraldGreenDark,
+                                tint = if (isDark) MaterialTheme.colorScheme.onPrimary else EmeraldGreenDark,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = LakuStrings.get("cart_btn", lang),
                                 fontWeight = FontWeight.Bold,
-                                color = EmeraldGreenDark,
+                                color = if (isDark) MaterialTheme.colorScheme.onPrimary else EmeraldGreenDark,
                                 fontSize = 13.sp
                             )
                         }
+                    }
+                }
+            }
+            }
+
+            // Permanent Split-View POS Cart Panel on Desktop (>= 1024.dp)
+            if (layoutInfo.useSplitPosView) {
+                VerticalDivider(
+                    thickness = 1.dp,
+                    color = if (isDark) DarkBorder else SoftCardBorder
+                )
+                Surface(
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier
+                        .width(340.dp)
+                        .fillMaxHeight()
+                        .testTag("desktop_split_cart_panel")
+                ) {
+                    if (cart.isEmpty()) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ShoppingCart,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(30.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(14.dp))
+                            Text(
+                                text = LakuStrings.get("cart", lang),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Pilih produk di sebelah kiri untuk mulai mencatat pesanan kasir.",
+                                fontSize = 12.5.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    } else {
+                        CartSheetContent(
+                            viewModel = viewModel,
+                            lang = lang,
+                            onClose = {},
+                            onCheckout = onOpenCheckout
+                        )
                     }
                 }
             }
@@ -443,11 +538,12 @@ fun PosScreen(
         )
     }
 
-    // Cart Bottom Sheet
+    // Cart Bottom Sheet (Phone / Tablet < 1024.dp)
     if (showCartSheet) {
         ModalBottomSheet(
             onDismissRequest = { showCartSheet = false },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            sheetMaxWidth = 560.dp
         ) {
             CartSheetContent(
                 viewModel = viewModel,
@@ -491,32 +587,39 @@ fun PosProductCard(
     onDecrement: () -> Unit
 ) {
     val context = LocalContext.current
+    val isDark = MaterialTheme.colorScheme.background == DarkBackground
+    val accentGreen = MaterialTheme.colorScheme.primary
+    val onAccentGreen = MaterialTheme.colorScheme.onPrimary
+    val priceGreen = if (isDark) DarkEmeraldPrimary else EmeraldGreenDark
+    val accentRed = if (isDark) DarkDangerRed else DangerRed
 
-    Card(
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    SoftElevatedCard(
+        shape = RoundedCornerShape(12.dp),
         modifier = Modifier
             .fillMaxWidth()
             .testTag("product_card_${product.id}")
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(10.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(7.dp)
         ) {
+            // Top Product Photo / Icon Container (compact height)
             Box(
                 modifier = Modifier
-                    .size(68.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(EmeraldGreenPrimary.copy(alpha = 0.08f)),
+                    .fillMaxWidth()
+                    .height(64.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(accentGreen.copy(alpha = if (isDark) 0.12f else 0.09f)),
                 contentAlignment = Alignment.Center
             ) {
-                if (product.imageUri != null) {
+                val resolvedImageModel = remember(product.imageUri) {
+                    ImageUtils.resolveProductImageModel(product.imageUri)
+                }
+                if (resolvedImageModel != null) {
                     AsyncImage(
                         model = ImageRequest.Builder(context)
-                            .data(product.imageUri)
+                            .data(resolvedImageModel)
                             .crossfade(true)
                             .build(),
                         contentDescription = product.name,
@@ -527,133 +630,177 @@ fun PosProductCard(
                     Icon(
                         imageVector = Icons.Default.Inventory,
                         contentDescription = null,
-                        tint = EmeraldGreenPrimary,
-                        modifier = Modifier.size(32.dp)
+                        tint = accentGreen,
+                        modifier = Modifier.size(26.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.height(5.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
+            // Product Name (max 2 lines, consistent height across grid rows)
+            Text(
+                text = product.name,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+                lineHeight = 14.5.sp,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                minLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            // Clean Category Label (no dangling bullet)
+            Text(
+                text = LakuStrings.translateCategory(product.category, lang),
+                fontSize = 9.5.sp,
+                lineHeight = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            // Compact Stock Indicator
+            if (product.isUnlimitedStock) {
                 Text(
-                    text = product.name,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
+                    text = LakuStrings.get("stock_unlimited_short", lang),
+                    fontSize = 9.5.sp,
+                    lineHeight = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = accentGreen,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-
-                Text(
-                    text = "${LakuStrings.translateCategory(product.category, lang)} • ${LakuStrings.translateUnit(product.unit, lang)}",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = FormatUtils.formatRupiah(product.sellingPrice),
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 15.sp,
-                        color = EmeraldGreenDark
-                    )
-                    Text(
-                        text = "/${LakuStrings.translateUnit(product.unit, lang)}",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                if (product.isUnlimitedStock) {
-                    Text(
-                        text = LakuStrings.get("stock_unlimited_short", lang),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = EmeraldGreenPrimary
-                    )
-                } else {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (product.isLowStock) {
-                            Icon(
-                                imageVector = Icons.Default.Warning,
-                                contentDescription = null,
-                                tint = DangerRed,
-                                modifier = Modifier.size(12.dp)
-                            )
-                            Spacer(modifier = Modifier.width(3.dp))
-                        }
-                        Text(
-                            text = if (product.isLowStock) "${LakuStrings.get("low_stock_prefix", lang)} ${FormatUtils.formatQty(product.stock, product.unit)}"
-                            else "${LakuStrings.get("stock_prefix", lang)} ${FormatUtils.formatQty(product.stock, product.unit)}",
-                            fontSize = 11.sp,
-                            fontWeight = if (product.isLowStock) FontWeight.Bold else FontWeight.Normal,
-                            color = if (product.isLowStock) DangerRed else MaterialTheme.colorScheme.onSurfaceVariant
+            } else {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (product.isLowStock) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = accentRed,
+                            modifier = Modifier.size(10.dp)
                         )
+                        Spacer(modifier = Modifier.width(2.dp))
                     }
+                    Text(
+                        text = if (product.isLowStock) {
+                            "${LakuStrings.get("low_stock_prefix", lang)} ${FormatUtils.formatQty(product.stock, product.unit)}"
+                        } else {
+                            "${LakuStrings.get("stock_prefix", lang)} ${FormatUtils.formatQty(product.stock, product.unit)}"
+                        },
+                        fontSize = 9.5.sp,
+                        lineHeight = 12.sp,
+                        fontWeight = if (product.isLowStock) FontWeight.Bold else FontWeight.Normal,
+                        color = if (product.isLowStock) accentRed else MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
 
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Bold Emerald Price (bright #22C55E in Dark Mode, crisp #15803D in Light Mode)
+            Row(
+                verticalAlignment = Alignment.Bottom,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = FormatUtils.formatRupiah(product.sellingPrice),
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 12.5.sp,
+                    color = priceGreen,
+                    maxLines = 1,
+                    softWrap = false
+                )
+                Text(
+                    text = "/${LakuStrings.translateUnit(product.unit, lang)}",
+                    fontSize = 9.5.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(modifier = Modifier.height(5.dp))
+
+            // Full-width Compact Action Button or Stepper Control
             if (cartQuantity > 0.0) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier
-                        .background(EmeraldGreenPrimary.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
-                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                        .fillMaxWidth()
+                        .height(30.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(accentGreen.copy(alpha = 0.14f))
+                        .border(1.dp, accentGreen.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 2.dp)
                 ) {
                     IconButton(
                         onClick = onDecrement,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(28.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Remove,
                             contentDescription = LakuStrings.get("delete", lang),
-                            tint = EmeraldGreenDark,
-                            modifier = Modifier.size(16.dp)
+                            tint = priceGreen,
+                            modifier = Modifier.size(14.dp)
                         )
                     }
 
                     Text(
                         text = if (cartQuantity % 1.0 == 0.0) "${cartQuantity.toInt()}" else String.format(java.util.Locale.US, "%.2f", cartQuantity),
                         fontWeight = FontWeight.ExtraBold,
-                        fontSize = 13.sp,
-                        color = EmeraldGreenDark,
-                        modifier = Modifier.padding(horizontal = 6.dp)
+                        fontSize = 12.sp,
+                        color = priceGreen
                     )
 
                     IconButton(
                         onClick = onIncrement,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(28.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = LakuStrings.get("add_btn", lang),
-                            tint = EmeraldGreenDark,
-                            modifier = Modifier.size(16.dp)
+                            tint = priceGreen,
+                            modifier = Modifier.size(14.dp)
                         )
                     }
                 }
             } else {
                 Button(
                     onClick = onAddClick,
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary),
-                    shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                    modifier = Modifier.testTag("add_to_cart_${product.id}")
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = accentGreen,
+                        contentColor = onAccentGreen
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(30.dp)
+                        .testTag("add_to_cart_${product.id}")
                 ) {
                     Icon(
-                        imageVector = Icons.Default.AddShoppingCart,
-                        contentDescription = LakuStrings.get("add_btn", lang),
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp)
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        tint = onAccentGreen,
+                        modifier = Modifier.size(14.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(3.dp))
                     Text(
                         text = if (product.unit.equals("kg", ignoreCase = true)) LakuStrings.get("choose_kg_btn", lang) else LakuStrings.get("add_btn", lang),
-                        fontSize = 12.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = onAccentGreen,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }
@@ -762,10 +909,11 @@ fun KgWeightDialog(
 
                 val weightVal = customWeightText.toDoubleOrNull() ?: 0.0
                 val totalEst = weightVal * product.sellingPrice
+                val isDarkDialog = MaterialTheme.colorScheme.background == DarkBackground
                 Text(
                     text = "${LakuStrings.get("estimated_price", lang)} ${FormatUtils.formatRupiah(totalEst)}",
                     fontWeight = FontWeight.Bold,
-                    color = EmeraldGreenDark,
+                    color = if (isDarkDialog) DarkEmeraldPrimary else EmeraldGreenDark,
                     fontSize = 14.sp
                 )
             }
@@ -778,9 +926,12 @@ fun KgWeightDialog(
                         onConfirm(weight)
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
             ) {
-                Text(LakuStrings.get("add_confirm", lang), fontWeight = FontWeight.Bold, color = Color.White)
+                Text(LakuStrings.get("add_confirm", lang), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
             }
         },
         dismissButton = {
@@ -811,6 +962,12 @@ fun CartSheetContent(
         maxOf(0.0, cartSubtotal - computedDiscount)
     }
 
+    val isDark = MaterialTheme.colorScheme.background == DarkBackground
+    val accentGreen = MaterialTheme.colorScheme.primary
+    val onAccentGreen = MaterialTheme.colorScheme.onPrimary
+    val accentGreenText = if (isDark) DarkEmeraldPrimary else EmeraldGreenDark
+    val accentRed = if (isDark) DarkDangerRed else DangerRed
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -826,7 +983,7 @@ fun CartSheetContent(
                 Icon(
                     imageVector = Icons.Default.ShoppingCart,
                     contentDescription = null,
-                    tint = EmeraldGreenPrimary
+                    tint = accentGreen
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
@@ -836,11 +993,11 @@ fun CartSheetContent(
                 )
             }
             TextButton(onClick = { viewModel.clearCart() }) {
-                Text(LakuStrings.get("clear_cart", lang), color = DangerRed, fontSize = 13.sp)
+                Text(LakuStrings.get("clear_cart", lang), color = accentRed, fontSize = 13.sp)
             }
         }
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
         // Items List
         LazyColumn(
@@ -853,7 +1010,7 @@ fun CartSheetContent(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f), RoundedCornerShape(12.dp))
                         .padding(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -872,7 +1029,7 @@ fun CartSheetContent(
                             text = FormatUtils.formatRupiah(item.subtotal),
                             fontWeight = FontWeight.ExtraBold,
                             fontSize = 13.sp,
-                            color = EmeraldGreenDark
+                            color = accentGreenText
                         )
                     }
 
@@ -885,7 +1042,7 @@ fun CartSheetContent(
                             },
                             modifier = Modifier.size(30.dp)
                         ) {
-                            Icon(imageVector = Icons.Default.Remove, contentDescription = LakuStrings.get("delete", lang), tint = EmeraldGreenDark)
+                            Icon(imageVector = Icons.Default.Remove, contentDescription = LakuStrings.get("delete", lang), tint = accentGreenText)
                         }
 
                         Text(
@@ -902,14 +1059,14 @@ fun CartSheetContent(
                             },
                             modifier = Modifier.size(30.dp)
                         ) {
-                            Icon(imageVector = Icons.Default.Add, contentDescription = LakuStrings.get("add_btn", lang), tint = EmeraldGreenDark)
+                            Icon(imageVector = Icons.Default.Add, contentDescription = LakuStrings.get("add_btn", lang), tint = accentGreenText)
                         }
 
                         IconButton(
                             onClick = { viewModel.removeFromCart(item.product.id) },
                             modifier = Modifier.size(30.dp)
                         ) {
-                            Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = LakuStrings.get("delete", lang), tint = DangerRed)
+                            Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = LakuStrings.get("delete", lang), tint = accentRed)
                         }
                     }
                 }
@@ -921,7 +1078,7 @@ fun CartSheetContent(
         // Discount (Manual / Percent), Customer Name, and WhatsApp
         Card(
             shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
         ) {
             Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(
@@ -936,10 +1093,18 @@ fun CartSheetContent(
                                 viewModel.manualDiscount.value = ""
                             }
                         },
-                        label = { Text(LakuStrings.get("discount_mode_manual", lang), fontSize = 11.sp) },
+                        label = { Text(LakuStrings.get("discount_mode_manual", lang), fontSize = 11.sp, fontWeight = if (discountMode == "manual") FontWeight.Bold else FontWeight.Medium) },
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = EmeraldGreenPrimary,
-                            selectedLabelColor = Color.White
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            labelColor = MaterialTheme.colorScheme.onSurface,
+                            selectedContainerColor = accentGreen,
+                            selectedLabelColor = onAccentGreen
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = discountMode == "manual",
+                            borderColor = MaterialTheme.colorScheme.outlineVariant,
+                            selectedBorderColor = Color.Transparent
                         ),
                         modifier = Modifier.weight(1f)
                     )
@@ -951,10 +1116,18 @@ fun CartSheetContent(
                                 viewModel.manualDiscount.value = ""
                             }
                         },
-                        label = { Text(LakuStrings.get("discount_mode_percent", lang), fontSize = 11.sp) },
+                        label = { Text(LakuStrings.get("discount_mode_percent", lang), fontSize = 11.sp, fontWeight = if (discountMode == "percent") FontWeight.Bold else FontWeight.Medium) },
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = EmeraldGreenPrimary,
-                            selectedLabelColor = Color.White
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            labelColor = MaterialTheme.colorScheme.onSurface,
+                            selectedContainerColor = accentGreen,
+                            selectedLabelColor = onAccentGreen
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = discountMode == "percent",
+                            borderColor = MaterialTheme.colorScheme.outlineVariant,
+                            selectedBorderColor = Color.Transparent
                         ),
                         modifier = Modifier.weight(1f)
                     )
@@ -975,7 +1148,7 @@ fun CartSheetContent(
                             else LakuStrings.get("discount_amount_label", lang)
                         )
                     },
-                    leadingIcon = { Icon(imageVector = Icons.Default.Percent, contentDescription = null, tint = EmeraldGreenPrimary) },
+                    leadingIcon = { Icon(imageVector = Icons.Default.Percent, contentDescription = null, tint = accentGreen) },
                     prefix = if (discountMode == "manual") {
                         { Text("${FormatUtils.currencySymbol} ") }
                     } else null,
@@ -994,7 +1167,7 @@ fun CartSheetContent(
                     value = customerName,
                     onValueChange = { viewModel.customerName.value = it },
                     label = { Text(LakuStrings.get("customer_name_optional", lang)) },
-                    leadingIcon = { Icon(imageVector = Icons.Default.Person, contentDescription = null, modifier = Modifier.size(18.dp), tint = EmeraldGreenPrimary) },
+                    leadingIcon = { Icon(imageVector = Icons.Default.Person, contentDescription = null, modifier = Modifier.size(18.dp), tint = accentGreen) },
                     placeholder = { Text(LakuStrings.get("customer_name_placeholder", lang)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
@@ -1005,7 +1178,7 @@ fun CartSheetContent(
                     value = customerPhone,
                     onValueChange = { viewModel.customerPhone.value = it },
                     label = { Text(LakuStrings.get("customer_phone_optional", lang)) },
-                    leadingIcon = { Icon(imageVector = Icons.Default.Phone, contentDescription = null, modifier = Modifier.size(18.dp), tint = EmeraldGreenPrimary) },
+                    leadingIcon = { Icon(imageVector = Icons.Default.Phone, contentDescription = null, modifier = Modifier.size(18.dp), tint = accentGreen) },
                     placeholder = { Text(LakuStrings.get("whatsapp_no_placeholder", lang)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     modifier = Modifier.fillMaxWidth(),
@@ -1034,13 +1207,13 @@ fun CartSheetContent(
                 Text(
                     if (discountMode == "percent" && discountText.isNotBlank()) "${LakuStrings.get("discount", lang)} ($discountText%)"
                     else LakuStrings.get("discount", lang),
-                    color = DangerRed
+                    color = accentRed
                 )
-                Text("- ${FormatUtils.formatRupiah(computedDiscount)}", color = DangerRed, fontWeight = FontWeight.Bold)
+                Text("- ${FormatUtils.formatRupiah(computedDiscount)}", color = accentRed, fontWeight = FontWeight.Bold)
             }
         }
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
+        HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1052,7 +1225,7 @@ fun CartSheetContent(
                 FormatUtils.formatRupiah(cartTotalAfterDiscount),
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 18.sp,
-                color = EmeraldGreenDark
+                color = accentGreenText
             )
         }
 
@@ -1061,7 +1234,7 @@ fun CartSheetContent(
         // Tombol Lanjut ke Pembayaran
         Button(
             onClick = onCheckout,
-            colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreenPrimary),
+            colors = ButtonDefaults.buttonColors(containerColor = accentGreen, contentColor = onAccentGreen),
             shape = RoundedCornerShape(14.dp),
             modifier = Modifier
                 .fillMaxWidth()
@@ -1072,7 +1245,7 @@ fun CartSheetContent(
                 text = LakuStrings.get("checkout", lang),
                 fontWeight = FontWeight.Bold,
                 fontSize = 15.sp,
-                color = Color.White
+                color = onAccentGreen
             )
         }
 

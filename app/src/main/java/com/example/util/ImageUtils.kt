@@ -4,11 +4,37 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import com.example.R
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
 
 object ImageUtils {
+
+    const val SAMPLE_IMG_KOPI_AREN = "drawable://img_prod_kopi_aren"
+    const val SAMPLE_IMG_ROTI_BAKAR = "drawable://img_prod_roti_bakar"
+    const val SAMPLE_IMG_BERAS_PREMIUM = "drawable://img_prod_beras_premium"
+    const val SAMPLE_IMG_MINYAK_GORENG = "drawable://img_prod_minyak_goreng"
+
+    /**
+     * Resolves a stored Product.imageUri into a Coil-compatible data model.
+     * Bundled sample product URIs map directly to @DrawableRes Int IDs so they
+     * render reliably across builds and never get stripped by resource shrinking.
+     */
+    fun resolveProductImageModel(imageUri: String?): Any? {
+        if (imageUri.isNullOrBlank()) return null
+        return resolveBundledDrawableRes(imageUri) ?: imageUri
+    }
+
+    private fun resolveBundledDrawableRes(imageUri: String): Int? {
+        return when (imageUri) {
+            SAMPLE_IMG_KOPI_AREN -> R.drawable.img_prod_kopi_aren
+            SAMPLE_IMG_ROTI_BAKAR -> R.drawable.img_prod_roti_bakar
+            SAMPLE_IMG_BERAS_PREMIUM -> R.drawable.img_prod_beras_premium
+            SAMPLE_IMG_MINYAK_GORENG -> R.drawable.img_prod_minyak_goreng
+            else -> null
+        }
+    }
 
     /**
      * Copies an image from a content URI into app's private internal storage
@@ -56,11 +82,15 @@ object ImageUtils {
     }
 
     /**
-     * Loads a Bitmap from an absolute file path or Uri string safely
+     * Loads a Bitmap from a bundled drawable URI, absolute file path, or Uri string safely
      */
     fun loadBitmap(context: Context, pathOrUri: String?): Bitmap? {
         if (pathOrUri.isNullOrBlank()) return null
         return try {
+            val bundledRes = resolveBundledDrawableRes(pathOrUri)
+            if (bundledRes != null) {
+                return BitmapFactory.decodeResource(context.resources, bundledRes)
+            }
             val file = File(pathOrUri)
             if (file.exists()) {
                 BitmapFactory.decodeFile(file.absolutePath)

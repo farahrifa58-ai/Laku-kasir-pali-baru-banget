@@ -1,0 +1,98 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == 'farahrifa58@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 3 && id.size() <= 128 && id.matches('^[A-Za-z0-9_\\-\\.]+$');
+    }
+
+    function isValidNonEmptyString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isValidOptionalString(data, field, maxLen) {
+      return !(field in data) || data[field] == null || (data[field] is string && data[field].size() <= maxLen);
+    }
+
+    function isValidActivationCodeDoc(data) {
+      return ('status' in data)
+        && data.status in ['available', 'used']
+        && isValidOptionalString(data, 'code', 128)
+        && isValidOptionalString(data, 'appId', 128)
+        && isValidOptionalString(data, 'appName', 128)
+        && isValidOptionalString(data, 'usedByBusinessName', 120)
+        && isValidOptionalString(data, 'registeredDeviceId', 128)
+        && isValidOptionalString(data, 'notes', 500)
+        && (!('usedAt' in data) || data.usedAt == null || (data.usedAt is timestamp && data.usedAt <= request.time))
+        && (!('createdAt' in data) || data.createdAt == null || (data.createdAt is timestamp && data.createdAt <= request.time));
+    }
+
+    function isValidClientOneTimeClaim() {
+      return existing().status == 'available'
+        && incoming().status == 'used'
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'status',
+          'usedByBusinessName',
+          'registeredDeviceId',
+          'usedAt'
+        ])
+        && isValidNonEmptyString(incoming().usedByBusinessName, 1, 120)
+        && isValidNonEmptyString(incoming().registeredDeviceId, 4, 128)
+        && incoming().usedAt is timestamp
+        && incoming().usedAt <= request.time;
+    }
+
+    // ===============================================================
+    // Activation Codes Collection (1-Device License without Login)
+    // ===============================================================
+
+    match /activation_codes/{codeId} {
+      // Allow single-code lookup for first-time activation verification
+      allow get: if isValidId(codeId);
+
+      // Admin has full list access; clients can only run bounded queries (limit <= 5) for Device ID auto-restore
+      allow list: if isAdmin() || (request.query.limit != null && request.query.limit <= 5);
+
+      // Only verified admin can create new activation codes
+      allow create: if isAdmin()
+        && isValidId(codeId)
+        && isValidActivationCodeDoc(incoming());
+
+      // Admin can manage any code; client can perform one-time claim from 'available' -> 'used' only
+      // Once status == 'used', document is permanently locked from non-admin updates
+      allow update: if isValidId(codeId) && (
+        (isAdmin() && isValidActivationCodeDoc(incoming())) ||
+        isValidClientOneTimeClaim()
+      );
+
+      // Only verified admin can delete activation codes
+      allow delete: if isAdmin();
+    }
+
+    // ===============================================================
+    // Default-Deny Catch-All
+    // ===============================================================
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

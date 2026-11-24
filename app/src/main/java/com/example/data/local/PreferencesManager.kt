@@ -52,7 +52,7 @@ class PreferencesManager(context: Context) {
             themeMode = prefs.getString("theme_mode", "light") ?: "light",
             language = language,
             currencyCode = currency,
-            appVersion = "1.1"
+            appVersion = "1.2"
         )
     }
 
@@ -106,5 +106,13 @@ class PreferencesManager(context: Context) {
 
     fun updateLastBackupTimestamp(timestamp: Long) {
         saveStoreProfile(_storeProfile.value.copy(lastBackupTimestamp = timestamp))
+    }
+
+    fun hasSeededSampleProducts(): Boolean {
+        return prefs.getBoolean("sample_products_seeded_v2", false)
+    }
+
+    fun setSampleProductsSeeded(seeded: Boolean) {
+        prefs.edit().putBoolean("sample_products_seeded_v2", seeded).apply()
     }
 }

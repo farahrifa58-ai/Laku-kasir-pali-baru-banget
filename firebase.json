@@ -1,0 +1,13 @@
+{
+  "firestore": [
+    {
+      "database": "ai-studio-android-lakukasi-169dc4af-6d52-44fe-866a-7d319a1964fa",
+      "rules": "firestore.rules"
+    }
+  ],
+  "emulators": {
+    "firestore": {
+      "port": 8085
+    }
+  }
+}

@@ -111,7 +111,7 @@ object LakuStrings {
         "app_title" -> "Laku Kasir Pro"
         "app_name_short" -> "Laku Kasir"
         "by_rafline" -> "by Rafline Dev"
-        "version" -> "Versi 1.1"
+        "version" -> "Versi 1.2"
         "open_cashier" -> "Buka Kasir"
         "save" -> "Simpan"
         "save_changes" -> "Simpan Perubahan"
@@ -158,7 +158,7 @@ object LakuStrings {
         "backup_restore" -> "Backup & Pemulihan"
         "backup_restore_card_desc" -> "Cadangkan manual & pulihkan data toko (JSON)"
         "about_app" -> "Tentang Aplikasi"
-        "about_app_subtitle" -> "Laku Kasir Pro • Rafline Dev • Versi 1.1"
+        "about_app_subtitle" -> "Laku Kasir Pro • Rafline Dev • Versi 1.2"
 
         // Store Profile Settings
         "store_name" -> "Nama Toko"
@@ -301,7 +301,7 @@ object LakuStrings {
         "developer_name" -> "Rafline Dev"
         "developer_value" -> "Aplikasi Kasir & POS by Rafline Dev"
         "app_version_label" -> "Versi Aplikasi"
-        "app_version_value" -> "1.1"
+        "app_version_value" -> "1.2"
         "about_description" -> "Laku Kasir Pro adalah aplikasi kasir (Point of Sale) modern yang dirancang khusus untuk UMKM, warung, kafe, toko ritel, dan berbagai jenis usaha agar pencatatan penjualan, stok barang, pengeluaran, dan laporan laba rugi menjadi lebih cepat, rapi, dan akurat."
         "features_label" -> "Fitur Unggulan"
         "features_list" -> "• Multi-Mata Uang Internasional & Multi-Bahasa\n• Transaksi Kasir Cepat & Scanner Barcode Kamera\n• Kustomisasi Struk Lengkap & Printer Thermal 58mm/80mm\n• Pengaturan PPN Otomatis/Manual & Diskon Nominal/Persen\n• Manajemen Produk, Kategori, & Stok Tanpa Batas\n• Laporan Omzet, Laba Bersih, & Catatan Pengeluaran\n• Backup Manual & Pemulihan Data (JSON / Drive / WA)"
@@ -558,7 +558,7 @@ object LakuStrings {
         "app_title" -> "Laku Kasir Pro"
         "app_name_short" -> "Laku Kasir"
         "by_rafline" -> "by Rafline Dev"
-        "version" -> "Version 1.1"
+        "version" -> "Version 1.2"
         "open_cashier" -> "Open Cashier"
         "save" -> "Save"
         "save_changes" -> "Save Changes"
@@ -605,7 +605,7 @@ object LakuStrings {
         "backup_restore" -> "Backup & Restore"
         "backup_restore_card_desc" -> "Manual backup & restore store data (JSON)"
         "about_app" -> "About Application"
-        "about_app_subtitle" -> "Laku Kasir Pro • Rafline Dev • Version 1.1"
+        "about_app_subtitle" -> "Laku Kasir Pro • Rafline Dev • Version 1.2"
 
         // Store Profile Settings
         "store_name" -> "Store Name"
@@ -748,7 +748,7 @@ object LakuStrings {
         "developer_name" -> "Rafline Dev"
         "developer_value" -> "Cashier & POS Application by Rafline Dev"
         "app_version_label" -> "App Version"
-        "app_version_value" -> "1.1"
+        "app_version_value" -> "1.2"
         "about_description" -> "Laku Kasir Pro is a modern Point of Sale (POS) app designed for small businesses, cafes, retail stores, and shops to manage sales, inventory, expenses, and profit/loss reports quickly and accurately."
         "features_label" -> "Key Features"
         "features_list" -> "• Multi-Currency & Multi-Language Support\n• Fast Cashier Transactions & Camera Barcode Scanner\n• Full Receipt Customization & 58mm/80mm Thermal Printer\n• Automatic/Manual Tax & Amount/Percentage Discounts\n• Unlimited Product, Category & Inventory Management\n• Revenue, Net Profit & Store Expense Reports\n• Manual Backup & Restore (JSON / Drive / WhatsApp)"

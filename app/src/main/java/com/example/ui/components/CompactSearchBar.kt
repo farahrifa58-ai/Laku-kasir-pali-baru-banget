@@ -52,11 +52,12 @@ fun CompactSearchBar(
 
     Surface(
         modifier = modifier.height(42.dp),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 1.dp,
         border = BorderStroke(
             width = if (isFocused) 1.5.dp else 1.dp,
-            color = if (isFocused) EmeraldGreenPrimary else MaterialTheme.colorScheme.outlineVariant
+            color = if (isFocused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
         )
     ) {
         Row(
@@ -68,7 +69,7 @@ fun CompactSearchBar(
             Icon(
                 imageVector = Icons.Default.Search,
                 contentDescription = searchContentDescription,
-                tint = EmeraldGreenPrimary,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(18.dp)
             )
 
